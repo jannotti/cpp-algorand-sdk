@@ -66,15 +66,35 @@ std::ostream& operator<<(std::ostream& os, const Account& acct);
 
 class SignedTransaction;
 
+class AssetParams {
+public:
+  uint64_t total = 0;
+  uint64_t decimals = 0;
+  bool default_frozen = false;
+  std::string unit_name;
+  std::string asset_name;
+  std::string url;
+  bytes meta_data_hash;
+  Address manager_addr;
+  Address reserve_addr;
+  Address freeze_addr;
+  Address clawback_addr;
+
+  template <typename Stream>
+  msgpack::packer<Stream>& pack(msgpack::packer<Stream>& o) const;
+
+  int key_count() const;
+};
+
 /* We use a single transaction class to represent all transaction
    types.  While it might seem natural to have Payment, AssetCreate
-   and so on as subclasses, it would complicate msgpacking. msgpack
-   libraries generally do not "omitempty" (as we must to be compatible
-   with algod/spec), so we need to use the lower-level packing
-   routines.  It seems easier to consolidate that in one place than to
-   create an interface for subclasses that would allow them to a)
-   report how many keys they intend to populate and b) return the
-   pairs, and c) sort them before packing them from the top.
+   and so on as subclasses, it would complicate msgpacking. Standard
+   msgpack does not "omitempty" (as we must to be compatible with
+   algod/spec), so we need to use the lower-level packing routines.
+   It seems easier to consolidate that in one place than to create an
+   interface for subclasses that would allow them to a) report how
+   many keys they intend to populate and b) return the pairs, and c)
+   sort them before packing them from the top.
 
    We'd then also need some sort of "virtual constructor" pattern to
    unpack Transactions into the right subclass.
@@ -107,6 +127,38 @@ public:
                                       std::string genesis_id, bytes genesis_hash,
                                       bytes lease, bytes note, Address rekey_to);
 
+  static Transaction asset_config(Address sender,
+
+                                  uint64_t asset_id, AssetParams asset_params,
+
+                                  uint64_t fee,
+                                  uint64_t first_valid, uint64_t last_valid,
+                                  std::string genesis_id, bytes genesis_hash,
+                                  bytes lease, bytes note, Address rekey_to);
+
+  static Transaction asset_transfer(Address sender,
+
+                                    uint64_t asset_id, uint64_t asset_amount,
+                                    Address asset_sender,
+                                    Address asset_receiver,
+                                    Address asset_close_to,
+
+                                    uint64_t fee,
+                                    uint64_t first_valid, uint64_t last_valid,
+                                    std::string genesis_id, bytes genesis_hash,
+                                    bytes lease, bytes note, Address rekey_to);
+
+  static Transaction asset_freeze(Address sender,
+
+                                  Address freeze_account,
+                                  uint64_t freeze_asset,
+                                  bool asset_frozen,
+
+                                  uint64_t fee,
+                                  uint64_t first_valid, uint64_t last_valid,
+                                  std::string genesis_id, bytes genesis_hash,
+                                  bytes lease, bytes note, Address rekey_to);
+
   SignedTransaction sign(Account) const;
 
   // Field names and sections are taken from:
@@ -123,10 +175,12 @@ public:
   bytes lease;
   bytes note;
   Address rekey_to;
+
   // Payment
   Address receiver;
   uint64_t amount = 0;
   Address close_to;
+
   // Key Registration
   bytes vote_pk;
   bytes selection_pk;
@@ -134,10 +188,23 @@ public:
   uint64_t vote_last = 0;
   uint64_t vote_key_dilution = 0;
   bool nonparticipation = false;
-  // Asset Configuration
+
   // Asset Config
+  uint64_t asset_config_id = 0;
+  AssetParams asset_params;
+
   // Asset Transfer
+  uint64_t asset_transfer_id = 0;
+  uint64_t asset_amount = 0;
+  Address asset_sender;
+  Address asset_receiver;
+  Address asset_close_to;
+
   // Asset Freeze
+  Address freeze_account;
+  uint64_t freeze_asset = 0;
+  bool asset_frozen = false;
+
   // Application Call
   // Compact Cert
 
@@ -189,6 +256,15 @@ namespace msgpack {
         }
       };
 
+      template<>
+      struct pack<AssetParams> {
+        template <typename Stream>
+        packer<Stream>&
+        operator()(msgpack::packer<Stream>& o, AssetParams const& v) const {
+          // "omitempty" problem, and special Address handling
+          return v.pack<Stream>(o);
+        }
+      };
     } // namespace adaptor
   } // MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS)
 }

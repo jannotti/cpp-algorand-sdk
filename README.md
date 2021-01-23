@@ -9,8 +9,8 @@ transactions, key handling, etc.
 
 # In progress
  1. Transaction types (a base type, plus payment and key reg exist)
+ 1. Signing (basic single signature is done, need logicsigs, multisigs)
 
 # TODO
- 1. signing transactions
  2. indexer APIs
  3. kmd APIs

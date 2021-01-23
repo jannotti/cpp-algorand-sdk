@@ -204,6 +204,60 @@ bytes SignedTransaction::encode() const {
 }
 
 
+bool is_present(bool b) {
+  return b;
+}
+bool is_present(uint64_t u) {
+  return u != 0;
+}
+bool is_present(std::string s) {
+  return !s.empty();
+}
+bool is_present(bytes b) {
+  return !b.empty();
+}
+bool is_present(Address a) {
+  return !a.is_zero();
+}
+bool is_present(AssetParams ap) {
+  return ap.key_count() > 0;
+};
+
+int AssetParams::key_count() const {
+  /* count the non-empty fields, for msgpack */
+  int keys = 0;
+  keys += is_present(total);
+  keys += is_present(decimals);
+  keys += is_present(default_frozen);
+  keys += is_present(unit_name);
+  keys += is_present(asset_name);
+  keys += is_present(url);
+  keys += is_present(meta_data_hash);
+  keys += is_present(manager_addr);
+  keys += is_present(reserve_addr);
+  keys += is_present(freeze_addr);
+  keys += is_present(clawback_addr);
+  return keys;
+}
+
+template <typename Stream>
+msgpack::packer<Stream>& AssetParams::pack(msgpack::packer<Stream>& o) const {
+  o.pack_map(key_count());
+  /* ordering is semantically ugly, but must be lexicographic */
+  if (is_present(meta_data_hash)) { o.pack("am"); o.pack(meta_data_hash); }
+  if (is_present(asset_name)) { o.pack("an"); o.pack(asset_name); }
+  if (is_present(url)) { o.pack("au"); o.pack(url); }
+  if (is_present(clawback_addr)) { o.pack("c"); o.pack(clawback_addr.public_key); }
+  if (is_present(decimals)) { o.pack("dc"); o.pack(decimals); }
+  if (is_present(default_frozen)) { o.pack("df"); o.pack(default_frozen); }
+  if (is_present(freeze_addr)) { o.pack("f"); o.pack(freeze_addr.public_key); }
+  if (is_present(manager_addr)) { o.pack("m"); o.pack(manager_addr.public_key); }
+  if (is_present(reserve_addr)) { o.pack("r"); o.pack(reserve_addr.public_key); }
+  if (is_present(total)) { o.pack("t"); o.pack(total); }
+  if (is_present(unit_name)) { o.pack("un"); o.pack(unit_name); }
+  return o;
+}
+
 Transaction::Transaction(Address sender, std::string tx_type) :
   sender(sender), tx_type(tx_type) { }
 
@@ -240,22 +294,6 @@ SignedTransaction Transaction::sign(Account acct) const {
   return SignedTransaction{*this, sig};
 }
 
-bool is_present(bool b) {
-  return b;
-}
-bool is_present(uint64_t u) {
-  return u != 0;
-}
-bool is_present(std::string s) {
-  return !s.empty();
-}
-bool is_present(bytes b) {
-  return !b.empty();
-}
-bool is_present(Address a) {
-  return !a.is_zero();
-}
-
 int Transaction::key_count() const {
   /* count the non-empty fields, for msgpack */
   int keys = 0;
@@ -281,6 +319,19 @@ int Transaction::key_count() const {
   keys += is_present(vote_last);
   keys += is_present(vote_key_dilution);
   keys += is_present(nonparticipation);
+
+  keys += is_present(asset_config_id);
+  keys += is_present(asset_params);
+
+  keys += is_present(asset_transfer_id);
+  keys += is_present(asset_amount);
+  keys += is_present(asset_sender);
+  keys += is_present(asset_receiver);
+  keys += is_present(asset_close_to);
+
+  keys += is_present(freeze_account);
+  keys += is_present(freeze_asset);
+  keys += is_present(asset_frozen);
 
   return keys;
 }
@@ -321,6 +372,20 @@ msgpack::packer<Stream>& Transaction::pack(msgpack::packer<Stream>& o) const {
   if (is_present(vote_key_dilution)) { o.pack("votekd"); o.pack(vote_pk); }
   if (is_present(vote_pk)) { o.pack("votekey"); o.pack(vote_pk); }
   if (is_present(vote_last)) { o.pack("votelst"); o.pack(vote_pk); }
+
+  if (is_present(asset_config_id)) { o.pack("caid"); o.pack(asset_config_id); }
+  if (is_present(asset_params)) { o.pack("apar"); o.pack(asset_params); }
+
+  if (is_present(asset_transfer_id)) { o.pack("xaid"); o.pack(asset_transfer_id); }
+  if (is_present(asset_amount)) { o.pack("aamt"); o.pack(asset_amount); }
+  if (is_present(asset_sender)) { o.pack("asnd"); o.pack(asset_sender.public_key); }
+  if (is_present(asset_receiver)) { o.pack("arcv"); o.pack(asset_receiver.public_key); }
+  if (is_present(asset_close_to)) { o.pack("aclose"); o.pack(asset_close_to.public_key); }
+
+  if (is_present(freeze_account)) { o.pack("fadd"); o.pack(freeze_account.public_key); }
+  if (is_present(freeze_asset)) { o.pack("faid"); o.pack(freeze_asset); }
+  if (is_present(asset_frozen)) { o.pack("afrz"); o.pack(asset_frozen); }
+
   return o;
 }
 
