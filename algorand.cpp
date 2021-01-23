@@ -141,6 +141,15 @@ Account::seed() const {
   return bytes{ed25519_seed, &ed25519_seed[sizeof(ed25519_seed)]};
 }
 
+bytes
+Account::sign(bytes msg) const {
+  unsigned char sig[crypto_sign_ed25519_BYTES];
+  crypto_sign_ed25519_detached(sig, 0, msg.data(), msg.size(), secret_key.data());
+  auto s = bytes{sig, &sig[sizeof(sig)]};
+  return s;
+
+}
+
 Account::Account(std::string address)
   : address(Address(address)) {
 }
@@ -175,12 +184,32 @@ operator<<(std::ostream& os, const Account& acct) {
   return os;
 }
 
+SignedTransaction::SignedTransaction(const Transaction& txn, bytes signature) :
+  sig(signature), txn(txn) { }
+
+template <typename Stream>
+msgpack::packer<Stream>& SignedTransaction::pack(msgpack::packer<Stream>& o) const {
+  o.pack_map(2);
+  o.pack("sig"); o.pack(sig);
+  o.pack("txn"); o.pack(txn);
+  return o;
+}
+
+bytes SignedTransaction::encode() const {
+  std::stringstream buffer;
+  msgpack::pack(buffer, *this);
+  std::string const& s = buffer.str();
+  bytes data{s.begin(), s.end()};
+  return data;
+}
+
+
 Transaction::Transaction(Address sender, std::string tx_type) :
   sender(sender), tx_type(tx_type) { }
 
 Transaction
 Transaction::payment(Address sender,
-                     Address receiver, uint64_t amount, bytes close_to,
+                     Address receiver, uint64_t amount, Address close_to,
                      uint64_t fee,
                      uint64_t first_valid, uint64_t last_valid,
                      std::string genesis_id, bytes genesis_hash,
@@ -189,7 +218,7 @@ Transaction::payment(Address sender,
 
   t.receiver = receiver;
   t.amount = amount;
-  t.close_remainder_to = close_to;
+  t.close_to = close_to;
 
   t.fee = fee;
   t.first_valid = first_valid;
@@ -201,6 +230,14 @@ Transaction::payment(Address sender,
   t.note = note;
   t.rekey_to = rekey_to;
   return t;
+}
+
+SignedTransaction Transaction::sign(Account acct) const {
+  bytes msg{'T', 'X'};
+  auto e = encode();
+  msg.insert(msg.end(), e.begin(), e.end());
+  auto sig = acct.sign(msg);
+  return SignedTransaction{*this, sig};
 }
 
 bool is_present(bool b) {
@@ -236,7 +273,7 @@ int Transaction::key_count() const {
 
   keys += is_present(receiver);
   keys += is_present(amount);
-  keys += is_present(close_remainder_to);
+  keys += is_present(close_to);
 
   keys += is_present(vote_pk);
   keys += is_present(selection_pk);
@@ -262,13 +299,14 @@ msgpack::packer<Stream>& Transaction::pack(msgpack::packer<Stream>& o) const {
      family).
   */
 
+  // Remember, sort these by the key name, not the variable name!
   o.pack_map(key_count());
   if (is_present(amount)) { o.pack("amt"); o.pack(amount); }
-  if (is_present(close_remainder_to)) { o.pack("close"); o.pack(close_remainder_to); }
+  if (is_present(close_to)) { o.pack("close"); o.pack(close_to.public_key); }
   if (is_present(fee)) { o.pack("fee"); o.pack(fee); }
   if (is_present(first_valid)) { o.pack("fv"); o.pack(first_valid); }
-  if (is_present(genesis_hash)) { o.pack("gh"); o.pack(genesis_hash); }
   if (is_present(genesis_id)) { o.pack("gen"); o.pack(genesis_id); }
+  if (is_present(genesis_hash)) { o.pack("gh"); o.pack(genesis_hash); }
   if (is_present(group)) { o.pack("grp"); o.pack(group); }
   if (is_present(last_valid)) { o.pack("lv"); o.pack(last_valid); }
   if (is_present(lease)) { o.pack("lx"); o.pack(lease); }
@@ -281,8 +319,8 @@ msgpack::packer<Stream>& Transaction::pack(msgpack::packer<Stream>& o) const {
   if (is_present(tx_type)) { o.pack("type"); o.pack(tx_type); }
   if (is_present(vote_first)) { o.pack("votefst"); o.pack(vote_pk); }
   if (is_present(vote_key_dilution)) { o.pack("votekd"); o.pack(vote_pk); }
-  if (is_present(vote_last)) { o.pack("votelst"); o.pack(vote_pk); }
   if (is_present(vote_pk)) { o.pack("votekey"); o.pack(vote_pk); }
+  if (is_present(vote_last)) { o.pack("votelst"); o.pack(vote_pk); }
   return o;
 }
 

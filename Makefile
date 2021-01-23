@@ -19,7 +19,10 @@ CCFLAGS += -std=c++14
 	$(CC) $(CCFLAGS) $(IFLAGS) -c $<
 
 example: $(subst .cpp,.o,$(SOURCE)) example.o
-	$(CC) $(CCFLAGS) $(LFLAGS) $? $(LIBS) -o $@
+	$(CC) $(CCFLAGS) $(LFLAGS) $^ $(LIBS) -o $@
 
 clean:
 	rm -f $(subst .cpp,.o,$(SOURCE)) example.o example
+
+$(subst .cpp,.o,$(SOURCE)): algorand.h
+example.o: algorand.h

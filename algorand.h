@@ -56,12 +56,15 @@ public:
 
   std::string mnemonic() const;
   bytes seed() const;
+  bytes sign(bytes msg) const;
 
   const bytes public_key() const { return address.public_key; }
   const Address address;
   const bytes secret_key;       // may or may not have.
 };
 std::ostream& operator<<(std::ostream& os, const Account& acct);
+
+class SignedTransaction;
 
 /* We use a single transaction class to represent all transaction
    types.  While it might seem natural to have Payment, AssetCreate
@@ -83,7 +86,7 @@ class Transaction {
 public:
   static Transaction payment(Address sender,
 
-                             Address receiver, uint64_t amount, bytes close_to,
+                             Address receiver, uint64_t amount, Address close_to,
 
                              uint64_t fee,
                              uint64_t first_valid, uint64_t last_valid,
@@ -104,6 +107,8 @@ public:
                                       std::string genesis_id, bytes genesis_hash,
                                       bytes lease, bytes note, Address rekey_to);
 
+  SignedTransaction sign(Account) const;
+
   // Field names and sections are taken from:
   //  https://developer.algorand.org/docs/reference/transactions/
   // Header
@@ -121,7 +126,7 @@ public:
   // Payment
   Address receiver;
   uint64_t amount = 0;
-  bytes close_remainder_to;
+  Address close_to;
   // Key Registration
   bytes vote_pk;
   bytes selection_pk;
@@ -143,6 +148,20 @@ public:
   bytes encode() const;
 };
 
+class SignedTransaction {
+public:
+  SignedTransaction(const Transaction& txn, bytes signature);
+  bytes encode() const;
+
+  template <typename Stream>
+  msgpack::packer<Stream>& pack(msgpack::packer<Stream>& o) const;
+  // Reconsider macro use once we do unpack for Transaction
+  // MSGPACK_DEFINE_MAP(sig, txn);
+private:
+  bytes sig;
+  Transaction txn;
+};
+
 namespace msgpack {
   MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {
     namespace adaptor {
@@ -151,17 +170,28 @@ namespace msgpack {
         template <typename Stream>
         packer<Stream>&
         operator()(msgpack::packer<Stream>& o, Transaction const& v) const {
-          // We don't use the MSGPACK_DEFAULT_MAP macro because we need
+          // We don't use the MSGPACK_DEFINE_MAP macro because we need
           // to "omitempty" for compatibility. That requires counting
           // keys first, to size the map, and then packing them (in
           // lexographical order).
           return v.pack<Stream>(o);
         }
       };
+
+      template<>
+      struct pack<SignedTransaction> {
+        template <typename Stream>
+        packer<Stream>&
+        operator()(msgpack::packer<Stream>& o, SignedTransaction const& v) const {
+          // We don't use the MSGPACK_DEFINE_MAP macro because
+          // Transaction has no unpacking support yet.
+          return v.pack<Stream>(o);
+        }
+      };
+
     } // namespace adaptor
   } // MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS)
 }
-
 
 class Algorand {
 public:

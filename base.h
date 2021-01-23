@@ -5,7 +5,7 @@
 
 typedef std::vector<unsigned char> bytes;
 
-std::string b64_encode(const bytes& in);
+std::string b64_encode(const bytes& in, bool padded = false);
 bytes b64_decode(const std::string& in);
 
 std::string b32_encode(const bytes& in);

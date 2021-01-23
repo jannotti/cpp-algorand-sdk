@@ -194,11 +194,47 @@ void transaction() {
   std::cout << "transaction pass" << std::endl;
 }
 
+void signing() {
+  auto mn = "advice pudding treat near rule blouse same whisper inner electric "
+    "quit surface sunny dismiss leader blood seat clown cost exist "
+    "hospital century reform able sponsor";
+  Account acct = Account::from_mnemonic(mn);
+  Address to{"PNWOET7LLOWMBMLE4KOCELCX6X3D3Q4H2Q4QJASYIEOF7YIPPQBG3YQ5YI"};
+  auto fee = 1176;              // make an interface for fee calculation
+  auto first_round = 12466;
+  auto last_round = 13466;
+  auto gh = b64_decode("JgsgCaCTqIaLeVhyL6XlRu3n7Rfk2FxMeK+wRSaQ7dI=");
+  auto gen_id = "devnet-v33.0";
+  auto note = b64_decode("6gAVR0Nsv5Y=");
+  Address close{"IDUTJEUIEVSMXTU4LGTJWZ2UE2E6TIODUKU6UW3FU3UKIQQ77RLUBBBFLA"};
+  auto amount = 1000;
+  Transaction pay = Transaction::payment(acct.address,
+                                         to, amount, close,
+                                         fee,
+                                         first_round, last_round,
+                                         gen_id, gh,
+                                         {}, note, {});
+  SignedTransaction stxn = pay.sign(acct);
+
+  auto golden =
+    "gqNzaWfEQPhUAZ3xkDDcc8FvOVo6UinzmKBCqs0woYSfodlmBMfQvGbeUx3Srxy3d"
+    "yJDzv7rLm26BRv9FnL2/AuT7NYfiAWjdHhui6NhbXTNA+ilY2xvc2XEIEDpNJKIJW"
+    "TLzpxZpptnVCaJ6aHDoqnqW2Wm6KRCH/xXo2ZlZc0EmKJmds0wsqNnZW6sZGV2bmV"
+    "0LXYzMy4womdoxCAmCyAJoJOohot5WHIvpeVG7eftF+TYXEx4r7BFJpDt0qJsds00"
+    "mqRub3RlxAjqABVHQ2y/lqNyY3bEIHts4k/rW6zAsWTinCIsV/X2PcOH1DkEglhBH"
+    "F/hD3wCo3NuZMQg5/D4TQaBHfnzHI2HixFV9GcdUaGFwgCQhmf0SVhwaKGkdHlwZa"
+    "NwYXk";
+
+  assert(golden == b64_encode(stxn.encode()));
+  std::cout << "signing pass" << std::endl;
+}
+
 int main(int argc, char** argv) {
   base();
   address();
   mnemonic();
   account();
   transaction();
+  signing();
   // exercise_rest(argc, argv);
 }

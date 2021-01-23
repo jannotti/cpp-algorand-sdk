@@ -4,7 +4,7 @@
 
 #define B64DIGITS "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
-std::string b64_encode(const bytes& in) {
+std::string b64_encode(const bytes& in, bool padded) {
   std::string out;
   out.reserve(4 + (4*in.size()/3));
 
@@ -20,6 +20,8 @@ std::string b64_encode(const bytes& in) {
   }
   if (bits > 0)
     out.push_back(B64DIGITS[(val<<(6-bits))&0x3F]);
+  while (padded && out.size() % 4)
+    out.push_back('=');
   return out;
 }
 
