@@ -8,7 +8,7 @@ transactions, key handling, etc.
  2. mnemonic/address/key handling
 
 # In progress
- 1. Transaction types (a base type, plus payment and key reg exist)
+ 1. Transaction types (payments, key reg, asset config/xfer/freeze)
  1. Signing (basic single signature is done, need logicsigs, multisigs)
 
 # TODO
