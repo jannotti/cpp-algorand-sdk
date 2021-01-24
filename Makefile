@@ -1,10 +1,5 @@
 SOURCE := algorand.cpp base.cpp mnemonic.cpp
 
-# Build dependencies, expressed for brew on MacOS
-#
-# brew install libsodium msgpack openssl rapidjson
-
-
 # On MacOS, brew installed openssl does not end up in system
 # locations, so we need to be explicit.
 IFLAGS += -I/usr/local/opt/openssl/include
@@ -20,6 +15,10 @@ CCFLAGS += -std=c++14
 
 example: $(subst .cpp,.o,$(SOURCE)) example.o
 	$(CC) $(CCFLAGS) $(LFLAGS) $^ $(LIBS) -o $@
+
+# Build dependencies, expressed for brew on MacOS
+brew-deps:
+	brew install libsodium msgpack openssl rapidjson
 
 clean:
 	rm -f $(subst .cpp,.o,$(SOURCE)) example.o example
