@@ -97,6 +97,23 @@ public:
   int key_count() const;
 };
 
+class LogicSig {
+public:
+  LogicSig(bytes logic = {}, std::vector<bytes> args = {}, bytes sig = {}) :
+    logic(logic), args(args), sig(sig) {}
+  bool is_delegated() const { return !logic.empty(); }
+
+  template <typename Stream>
+  msgpack::packer<Stream>& pack(msgpack::packer<Stream>& o) const;
+
+  /* Create a new logicsig with the same program, but delegated by the Account. */
+  LogicSig sign(Account) const;
+
+  bytes logic;
+  std::vector<bytes> args;
+  bytes sig;
+};
+
 /* We use a single transaction class to represent all transaction
    types.  While it might seem natural to have Payment, AssetCreate
    and so on as subclasses, it would complicate msgpacking. Standard
@@ -188,6 +205,7 @@ public:
 
 
   SignedTransaction sign(Account) const;
+  SignedTransaction sign(LogicSig) const;
 
   // Field names and sections are taken from:
   //  https://developer.algorand.org/docs/reference/transactions/
@@ -252,23 +270,10 @@ public:
   bytes encode() const;
 };
 
-class LogicSig {
-public:
-  LogicSig(bytes logic = {}, std::vector<bytes> args = {}) : logic(logic), args(args) {}
-  LogicSig(bytes logic, Account delegator, std::vector<bytes> = {});
-  bool is_delegated() const { return !logic.empty(); }
-
-  template <typename Stream>
-  msgpack::packer<Stream>& pack(msgpack::packer<Stream>& o) const;
-
-  bytes logic;
-  std::vector<bytes> args;
-  bytes sig;
-};
-
 class SignedTransaction {
 public:
   SignedTransaction(const Transaction& txn, bytes signature);
+  SignedTransaction(const Transaction& txn, LogicSig logic);
   bytes encode() const;
 
   template <typename Stream>

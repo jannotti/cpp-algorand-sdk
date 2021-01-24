@@ -229,6 +229,56 @@ void signing() {
   std::cout << "signing pass" << std::endl;
 }
 
+void logicsig() {
+  bytes program{0x01, 0x20, 0x01, 0x01, 0x22};  // int 1
+  Address hash("6Z3C3LDVWGMX23BMSYMANACQOSINPFIRF77H7N3AWJZYV6OH6GWTJKVMXY");
+  auto public_key = hash.public_key;
+
+  LogicSig lsig(program);
+  // assert(lsig.verify(public_key))
+  // assert(lsig.address() == hash)
+
+  std::vector<bytes> args{{0x01, 0x02, 0x03}, {0x04, 0x05, 0x06}};
+  lsig = LogicSig(program, args);
+  // assert(lsig.verify(public_key))
+
+
+  Address from("47YPQTIGQEO7T4Y4RWDYWEKV6RTR2UNBQXBABEEGM72ESWDQNCQ52OPASU");
+  Address to("PNWOET7LLOWMBMLE4KOCELCX6X3D3Q4H2Q4QJASYIEOF7YIPPQBG3YQ5YI");
+
+  std::string mn = "advice pudding treat near rule blouse same whisper inner "
+                   "electric quit surface sunny dismiss leader blood seat clown "
+                   "cost exist hospital century reform able sponsor";
+  auto fee = 1000;
+  auto amount = 2000;
+  auto fv = 2063137;
+
+  auto gh = b64_decode("sC3P7e2SdbqKJK0tbiCdK9tdSpbe6XeCGKdoNzmlj0E=");
+  auto note = b64_decode("8xMCTuLQ810=");
+
+  Transaction pay = Transaction::payment(from,
+                                         to, amount, {},
+                                         fee,
+                                         fv, fv+1000,
+                                         "devnet-v1.0", gh,
+                                         {}, note, {});
+  auto golden =
+    "gqRsc2lng6NhcmeSxAMxMjPEAzQ1NqFsxAUBIAEBIqNzaWfEQE6HXaI5K0lcq50o/"
+    "y3bWOYsyw9TLi/oorZB4xaNdn1Z14351u2f6JTON478fl+JhIP4HNRRAIh/I8EWXB"
+    "PpJQ2jdHhuiqNhbXTNB9CjZmVlzQPoomZ2zgAfeyGjZ2Vuq2Rldm5ldC12MS4womd"
+    "oxCCwLc/t7ZJ1uookrS1uIJ0r211Klt7pd4IYp2g3OaWPQaJsds4AH38JpG5vdGXE"
+    "CPMTAk7i0PNdo3JjdsQge2ziT+tbrMCxZOKcIixX9fY9w4fUOQSCWEEcX+EPfAKjc"
+    "25kxCDn8PhNBoEd+fMcjYeLEVX0Zx1RoYXCAJCGZ/RJWHBooaR0eXBlo3BheQ";
+
+  args = {{'1','2','3'}, {'4','5','6'}};
+  auto acct = Account::from_mnemonic(mn);
+  lsig = LogicSig(program, args);
+  auto lstx = pay.sign(lsig.sign(acct));
+
+  assert(golden == b64_encode(lstx.encode()));
+
+  std::cout << "logicsig pass" << std::endl;
+}
 int main(int argc, char** argv) {
   base();
   address();
@@ -236,5 +286,6 @@ int main(int argc, char** argv) {
   account();
   transaction();
   signing();
+  logicsig();
   // exercise_rest(argc, argv);
 }

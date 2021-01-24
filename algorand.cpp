@@ -230,6 +230,13 @@ int kv_pack(msgpack::packer<Stream>& o, const char* key, V value) {
   return 1;
 }
 
+LogicSig LogicSig::sign(Account acct) const {
+  bytes msg{'P', 'r', 'o', 'g', 'r', 'a', 'm'};
+  msg.insert(msg.end(), logic.begin(), logic.end());
+  auto sig = acct.sign(msg);
+  return LogicSig{this->logic, this->args, sig};
+}
+
 template <typename Stream>
 msgpack::packer<Stream>& LogicSig::pack(msgpack::packer<Stream>& o) const {
   o.pack_map(1 + is_present(args) + is_present(sig));
@@ -241,6 +248,9 @@ msgpack::packer<Stream>& LogicSig::pack(msgpack::packer<Stream>& o) const {
 
 SignedTransaction::SignedTransaction(const Transaction& txn, bytes signature) :
   sig(signature), txn(txn) { }
+
+SignedTransaction::SignedTransaction(const Transaction& txn, LogicSig logic) :
+  lsig(logic), txn(txn) { }
 
 template <typename Stream>
 msgpack::packer<Stream>& SignedTransaction::pack(msgpack::packer<Stream>& o) const {
@@ -471,6 +481,10 @@ SignedTransaction Transaction::sign(Account acct) const {
   msg.insert(msg.end(), e.begin(), e.end());
   auto sig = acct.sign(msg);
   return SignedTransaction{*this, sig};
+}
+
+SignedTransaction Transaction::sign(LogicSig logic) const {
+  return SignedTransaction{*this, logic};
 }
 
 int Transaction::key_count() const {
