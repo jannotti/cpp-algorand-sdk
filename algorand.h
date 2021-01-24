@@ -86,6 +86,8 @@ public:
 
 class StateSchema {
 public:
+  StateSchema(int, int) : StateSchema() {}
+  StateSchema() : ints(0), byte_slices(0) {}
   uint64_t ints = 0;
   uint64_t byte_slices = 0;
 
@@ -250,6 +252,20 @@ public:
   bytes encode() const;
 };
 
+class LogicSig {
+public:
+  LogicSig(bytes logic = {}, std::vector<bytes> args = {}) : logic(logic), args(args) {}
+  LogicSig(bytes logic, Account delegator, std::vector<bytes> = {});
+  bool is_delegated() const { return !logic.empty(); }
+
+  template <typename Stream>
+  msgpack::packer<Stream>& pack(msgpack::packer<Stream>& o) const;
+
+  bytes logic;
+  std::vector<bytes> args;
+  bytes sig;
+};
+
 class SignedTransaction {
 public:
   SignedTransaction(const Transaction& txn, bytes signature);
@@ -261,6 +277,7 @@ public:
   // MSGPACK_DEFINE_MAP(sig, txn);
 private:
   bytes sig;
+  LogicSig lsig;
   Address signer;
   Transaction txn;
 };
@@ -277,6 +294,15 @@ namespace msgpack {
           // encode an "outer" object here, we just want an Address to
           // encode the public_key as if that was the whole object.
           return o.pack(v.public_key);
+        }
+      };
+
+      template<>
+      struct pack<LogicSig> {
+        template <typename Stream>
+        packer<Stream>&
+        operator()(msgpack::packer<Stream>& o, LogicSig const& v) const {
+          return v.pack<Stream>(o);
         }
       };
 

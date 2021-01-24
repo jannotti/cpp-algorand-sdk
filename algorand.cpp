@@ -199,6 +199,9 @@ bool is_present(bytes b) {
 bool is_present(Address a) {
   return !a.is_zero();
 }
+bool is_present(LogicSig lsig) {
+  return is_present(lsig.logic);
+};
 bool is_present(AssetParams ap) {
   return ap.key_count() > 0;
 };
@@ -227,14 +230,24 @@ int kv_pack(msgpack::packer<Stream>& o, const char* key, V value) {
   return 1;
 }
 
+template <typename Stream>
+msgpack::packer<Stream>& LogicSig::pack(msgpack::packer<Stream>& o) const {
+  o.pack_map(1 + is_present(args) + is_present(sig));
+  kv_pack(o, "arg", args);
+  kv_pack(o, "l", logic);
+  kv_pack(o, "sig", sig);
+  return o;
+}
+
 SignedTransaction::SignedTransaction(const Transaction& txn, bytes signature) :
   sig(signature), txn(txn) { }
 
 template <typename Stream>
 msgpack::packer<Stream>& SignedTransaction::pack(msgpack::packer<Stream>& o) const {
-  o.pack_map(2 + is_present(signer));
-  kv_pack(o, "sig", sig);
+  o.pack_map(2 + is_present(signer)); // one of the sig types, txn, and maybe sgnr
+  kv_pack(o, "lsig", lsig);
   kv_pack(o, "sgnr", signer);
+  kv_pack(o, "sig", sig);
   kv_pack(o, "txn", txn);
   return o;
 }
