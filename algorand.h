@@ -25,8 +25,6 @@ typedef std::vector<unsigned char> bytes;
 class Address {
 public:
   Address();                    // Constructs the ZERO address
-  // Address(const Address&);
-
   Address(std::string b32form);
   Address(bytes public_key);
   std::string as_string;
@@ -60,7 +58,7 @@ public:
 
   const bytes public_key() const { return address.public_key; }
   const Address address;
-  const bytes secret_key;       // may or may not have.
+  const bytes secret_key;       // empty() if created from an address, not key
 };
 std::ostream& operator<<(std::ostream& os, const Account& acct);
 
@@ -79,6 +77,17 @@ public:
   Address reserve_addr;
   Address freeze_addr;
   Address clawback_addr;
+
+  template <typename Stream>
+  msgpack::packer<Stream>& pack(msgpack::packer<Stream>& o) const;
+
+  int key_count() const;
+};
+
+class StateSchema {
+public:
+  uint64_t ints = 0;
+  uint64_t byte_slices = 0;
 
   template <typename Stream>
   msgpack::packer<Stream>& pack(msgpack::packer<Stream>& o) const;
@@ -159,6 +168,23 @@ public:
                                   std::string genesis_id, bytes genesis_hash,
                                   bytes lease, bytes note, Address rekey_to);
 
+  static Transaction app_call(Address sender,
+
+                              uint64_t application_id,
+                              uint64_t on_complete,
+                              std::vector<Address> accounts,
+                              bytes approval_program, bytes clear_state_program,
+                              std::vector<bytes> app_arguments,
+                              std::vector<uint64_t> foreign_apps,
+                              std::vector<uint64_t> foreign_assets,
+                              StateSchema globals, StateSchema locals,
+
+                              uint64_t fee,
+                              uint64_t first_valid, uint64_t last_valid,
+                              std::string genesis_id, bytes genesis_hash,
+                              bytes lease, bytes note, Address rekey_to);
+
+
   SignedTransaction sign(Account) const;
 
   // Field names and sections are taken from:
@@ -190,23 +216,32 @@ public:
   bool nonparticipation = false;
 
   // Asset Config
-  uint64_t asset_config_id = 0;
+  uint64_t config_asset = 0;
   AssetParams asset_params;
 
   // Asset Transfer
-  uint64_t asset_transfer_id = 0;
+  uint64_t xfer_asset = 0;
   uint64_t asset_amount = 0;
   Address asset_sender;
   Address asset_receiver;
   Address asset_close_to;
 
   // Asset Freeze
-  Address freeze_account;
   uint64_t freeze_asset = 0;
+  Address freeze_account;
   bool asset_frozen = false;
 
   // Application Call
-  // Compact Cert
+  uint64_t application_id = 0;
+  uint64_t on_complete = 0;
+  std::vector<Address> accounts;
+  bytes approval_program;
+  bytes clear_state_program;
+  std::vector<bytes> app_arguments;
+  std::vector<uint64_t> foreign_apps;
+  std::vector<uint64_t> foreign_assets;
+  StateSchema globals;
+  StateSchema locals;
 
   template <typename Stream>
   msgpack::packer<Stream>& pack(msgpack::packer<Stream>& o) const;
@@ -226,12 +261,25 @@ public:
   // MSGPACK_DEFINE_MAP(sig, txn);
 private:
   bytes sig;
+  Address signer;
   Transaction txn;
 };
 
 namespace msgpack {
   MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {
     namespace adaptor {
+      template<>
+      struct pack<Address> {
+        template <typename Stream>
+        packer<Stream>&
+        operator()(msgpack::packer<Stream>& o, Address const& v) const {
+          // We can't use MSGPACK_DEFINE because we don't want to
+          // encode an "outer" object here, we just want an Address to
+          // encode the public_key as if that was the whole object.
+          return o.pack(v.public_key);
+        }
+      };
+
       template<>
       struct pack<Transaction> {
         template <typename Stream>
@@ -265,6 +313,17 @@ namespace msgpack {
           return v.pack<Stream>(o);
         }
       };
+
+      template<>
+      struct pack<StateSchema> {
+        template <typename Stream>
+        packer<Stream>&
+        operator()(msgpack::packer<Stream>& o, StateSchema const& v) const {
+          // "omitempty" problem
+          return v.pack<Stream>(o);
+        }
+      };
+
     } // namespace adaptor
   } // MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS)
 }

@@ -24,5 +24,7 @@ example: $(subst .cpp,.o,$(SOURCE)) example.o
 clean:
 	rm -f $(subst .cpp,.o,$(SOURCE)) example.o example
 
-$(subst .cpp,.o,$(SOURCE)): algorand.h
+algorand.o: algorand.h
+base.o: base.h
+mnemonic.o: mnemonic.h
 example.o: algorand.h

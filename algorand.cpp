@@ -184,26 +184,6 @@ operator<<(std::ostream& os, const Account& acct) {
   return os;
 }
 
-SignedTransaction::SignedTransaction(const Transaction& txn, bytes signature) :
-  sig(signature), txn(txn) { }
-
-template <typename Stream>
-msgpack::packer<Stream>& SignedTransaction::pack(msgpack::packer<Stream>& o) const {
-  o.pack_map(2);
-  o.pack("sig"); o.pack(sig);
-  o.pack("txn"); o.pack(txn);
-  return o;
-}
-
-bytes SignedTransaction::encode() const {
-  std::stringstream buffer;
-  msgpack::pack(buffer, *this);
-  std::string const& s = buffer.str();
-  bytes data{s.begin(), s.end()};
-  return data;
-}
-
-
 bool is_present(bool b) {
   return b;
 }
@@ -222,6 +202,51 @@ bool is_present(Address a) {
 bool is_present(AssetParams ap) {
   return ap.key_count() > 0;
 };
+bool is_present(StateSchema schema) {
+  return schema.ints > 0 || schema.byte_slices > 0;
+};
+bool is_present(Transaction) {
+  return true;
+};
+
+template <typename E>
+bool is_present(std::vector<E> list) {
+  for (const auto& e : list)
+    if (is_present(e)) return true;
+  return false;
+}
+
+
+
+template <typename Stream, typename V>
+int kv_pack(msgpack::packer<Stream>& o, const char* key, V value) {
+  if (!is_present(value))
+    return 0;
+  o.pack(key);
+  o.pack(value);
+  return 1;
+}
+
+SignedTransaction::SignedTransaction(const Transaction& txn, bytes signature) :
+  sig(signature), txn(txn) { }
+
+template <typename Stream>
+msgpack::packer<Stream>& SignedTransaction::pack(msgpack::packer<Stream>& o) const {
+  o.pack_map(2 + is_present(signer));
+  kv_pack(o, "sig", sig);
+  kv_pack(o, "sgnr", signer);
+  kv_pack(o, "txn", txn);
+  return o;
+}
+
+bytes SignedTransaction::encode() const {
+  std::stringstream buffer;
+  msgpack::pack(buffer, *this);
+  std::string const& s = buffer.str();
+  bytes data{s.begin(), s.end()};
+  return data;
+}
+
 
 int AssetParams::key_count() const {
   /* count the non-empty fields, for msgpack */
@@ -244,17 +269,32 @@ template <typename Stream>
 msgpack::packer<Stream>& AssetParams::pack(msgpack::packer<Stream>& o) const {
   o.pack_map(key_count());
   /* ordering is semantically ugly, but must be lexicographic */
-  if (is_present(meta_data_hash)) { o.pack("am"); o.pack(meta_data_hash); }
-  if (is_present(asset_name)) { o.pack("an"); o.pack(asset_name); }
-  if (is_present(url)) { o.pack("au"); o.pack(url); }
-  if (is_present(clawback_addr)) { o.pack("c"); o.pack(clawback_addr.public_key); }
-  if (is_present(decimals)) { o.pack("dc"); o.pack(decimals); }
-  if (is_present(default_frozen)) { o.pack("df"); o.pack(default_frozen); }
-  if (is_present(freeze_addr)) { o.pack("f"); o.pack(freeze_addr.public_key); }
-  if (is_present(manager_addr)) { o.pack("m"); o.pack(manager_addr.public_key); }
-  if (is_present(reserve_addr)) { o.pack("r"); o.pack(reserve_addr.public_key); }
-  if (is_present(total)) { o.pack("t"); o.pack(total); }
-  if (is_present(unit_name)) { o.pack("un"); o.pack(unit_name); }
+  kv_pack(o, "an", asset_name);
+  kv_pack(o, "au", url);
+  kv_pack(o, "c", clawback_addr.public_key);
+  kv_pack(o, "dc", decimals);
+  kv_pack(o, "df", default_frozen);
+  kv_pack(o, "f", freeze_addr);
+  kv_pack(o, "m", manager_addr);
+  kv_pack(o, "r", reserve_addr);
+  kv_pack(o, "t", total);
+  kv_pack(o, "un", unit_name);
+  return o;
+}
+
+int StateSchema::key_count() const {
+  /* count the non-empty fields, for msgpack */
+  int keys = 0;
+  keys += is_present(ints);
+  keys += is_present(byte_slices);
+  return keys;
+}
+
+template <typename Stream>
+msgpack::packer<Stream>& StateSchema::pack(msgpack::packer<Stream>& o) const {
+  o.pack_map(key_count());
+  kv_pack(o, "nui", ints);
+  kv_pack(o, "nbs", byte_slices);
   return o;
 }
 
@@ -273,6 +313,132 @@ Transaction::payment(Address sender,
   t.receiver = receiver;
   t.amount = amount;
   t.close_to = close_to;
+
+  t.fee = fee;
+  t.first_valid = first_valid;
+  t.last_valid = last_valid;
+
+  t.genesis_id = genesis_id;
+  t.genesis_hash = genesis_hash;
+  t.lease = lease;
+  t.note = note;
+  t.rekey_to = rekey_to;
+  return t;
+}
+
+Transaction
+Transaction::asset_config(Address sender,
+
+                          uint64_t asset_id, AssetParams asset_params,
+
+                          uint64_t fee,
+                          uint64_t first_valid, uint64_t last_valid,
+                          std::string genesis_id, bytes genesis_hash,
+                          bytes lease, bytes note, Address rekey_to) {
+  Transaction t = Transaction(sender, "acfg");
+
+  t.config_asset = asset_id;
+  t.asset_params = asset_params;
+
+  t.fee = fee;
+  t.first_valid = first_valid;
+  t.last_valid = last_valid;
+
+  t.genesis_id = genesis_id;
+  t.genesis_hash = genesis_hash;
+  t.lease = lease;
+  t.note = note;
+  t.rekey_to = rekey_to;
+  return t;
+}
+
+Transaction Transaction::asset_transfer(Address sender,
+
+                                        uint64_t asset_id, uint64_t asset_amount,
+                                        Address asset_sender,
+                                        Address asset_receiver,
+                                        Address asset_close_to,
+
+                                        uint64_t fee,
+                                        uint64_t first_valid, uint64_t last_valid,
+                                        std::string genesis_id, bytes genesis_hash,
+                                        bytes lease, bytes note, Address rekey_to) {
+  Transaction t = Transaction(sender, "axfr");
+
+  t.xfer_asset = asset_id;
+  t.asset_amount = asset_amount;
+  t.asset_sender = asset_sender;
+  t.asset_receiver = asset_receiver;
+  t.asset_close_to = asset_close_to;
+
+  t.fee = fee;
+  t.first_valid = first_valid;
+  t.last_valid = last_valid;
+
+  t.genesis_id = genesis_id;
+  t.genesis_hash = genesis_hash;
+  t.lease = lease;
+  t.note = note;
+  t.rekey_to = rekey_to;
+  return t;
+}
+
+Transaction Transaction::asset_freeze(Address sender,
+
+                                      Address freeze_account,
+                                      uint64_t freeze_asset,
+                                      bool asset_frozen,
+
+                                      uint64_t fee,
+                                      uint64_t first_valid, uint64_t last_valid,
+                                      std::string genesis_id, bytes genesis_hash,
+                                      bytes lease, bytes note, Address rekey_to) {
+  Transaction t = Transaction(sender, "afrz");
+
+  t.freeze_account = freeze_account;
+  t.freeze_asset = freeze_asset;
+  t.asset_frozen = asset_frozen;
+
+  t.fee = fee;
+  t.first_valid = first_valid;
+  t.last_valid = last_valid;
+
+  t.genesis_id = genesis_id;
+  t.genesis_hash = genesis_hash;
+  t.lease = lease;
+  t.note = note;
+  t.rekey_to = rekey_to;
+  return t;
+}
+
+Transaction
+Transaction::app_call(Address sender,
+
+                      uint64_t application_id,
+                      uint64_t on_complete,
+                      std::vector<Address> accounts,
+                      bytes approval_program, bytes clear_state_program,
+                      std::vector<bytes> app_arguments,
+                      std::vector<uint64_t> foreign_apps,
+                      std::vector<uint64_t> foreign_assets,
+                      StateSchema globals, StateSchema locals,
+
+                      uint64_t fee,
+                      uint64_t first_valid, uint64_t last_valid,
+                      std::string genesis_id, bytes genesis_hash,
+                      bytes lease, bytes note, Address rekey_to) {
+  Transaction t = Transaction(sender, "appl");
+
+  t.application_id = application_id;
+  t.on_complete = on_complete;
+  t.accounts = accounts;
+  t.approval_program = approval_program;
+  t.clear_state_program = clear_state_program;
+  t.app_arguments = app_arguments;
+  t.foreign_apps = foreign_apps;
+  t.foreign_assets = foreign_assets;
+  t.globals = globals;
+  t.locals = locals;
 
   t.fee = fee;
   t.first_valid = first_valid;
@@ -320,10 +486,10 @@ int Transaction::key_count() const {
   keys += is_present(vote_key_dilution);
   keys += is_present(nonparticipation);
 
-  keys += is_present(asset_config_id);
+  keys += is_present(config_asset);
   keys += is_present(asset_params);
 
-  keys += is_present(asset_transfer_id);
+  keys += is_present(xfer_asset);
   keys += is_present(asset_amount);
   keys += is_present(asset_sender);
   keys += is_present(asset_receiver);
@@ -351,40 +517,50 @@ msgpack::packer<Stream>& Transaction::pack(msgpack::packer<Stream>& o) const {
   */
 
   // Remember, sort these by the key name, not the variable name!
+  // kv_pack exists so that these lines can be sorted directly.
   o.pack_map(key_count());
-  if (is_present(amount)) { o.pack("amt"); o.pack(amount); }
-  if (is_present(close_to)) { o.pack("close"); o.pack(close_to.public_key); }
-  if (is_present(fee)) { o.pack("fee"); o.pack(fee); }
-  if (is_present(first_valid)) { o.pack("fv"); o.pack(first_valid); }
-  if (is_present(genesis_id)) { o.pack("gen"); o.pack(genesis_id); }
-  if (is_present(genesis_hash)) { o.pack("gh"); o.pack(genesis_hash); }
-  if (is_present(group)) { o.pack("grp"); o.pack(group); }
-  if (is_present(last_valid)) { o.pack("lv"); o.pack(last_valid); }
-  if (is_present(lease)) { o.pack("lx"); o.pack(lease); }
-  if (is_present(nonparticipation)) { o.pack("nonpart"); o.pack(nonparticipation); }
-  if (is_present(note)) { o.pack("note"); o.pack(note); }
-  if (is_present(receiver)) { o.pack("rcv"); o.pack(receiver.public_key); }
-  if (is_present(rekey_to)) { o.pack("rekey"); o.pack(rekey_to.public_key); }
-  if (is_present(selection_pk)) { o.pack("selkey"); o.pack(selection_pk); }
-  if (is_present(sender)) { o.pack("snd"); o.pack(sender.public_key); }
-  if (is_present(tx_type)) { o.pack("type"); o.pack(tx_type); }
-  if (is_present(vote_first)) { o.pack("votefst"); o.pack(vote_pk); }
-  if (is_present(vote_key_dilution)) { o.pack("votekd"); o.pack(vote_pk); }
-  if (is_present(vote_pk)) { o.pack("votekey"); o.pack(vote_pk); }
-  if (is_present(vote_last)) { o.pack("votelst"); o.pack(vote_pk); }
+  kv_pack(o, "aamt", asset_amount);
+  kv_pack(o, "aclose", asset_close_to);
+  kv_pack(o, "afrz", asset_frozen);
+  kv_pack(o, "amt", amount);
+  kv_pack(o, "apar", asset_params);
+  kv_pack(o, "arcv", asset_receiver);
+  kv_pack(o, "asnd", asset_sender);
+  kv_pack(o, "caid", config_asset);
+  kv_pack(o, "close", close_to);
+  kv_pack(o, "fadd", freeze_account);
+  kv_pack(o, "faid", freeze_asset);
+  kv_pack(o, "fee", fee);
+  kv_pack(o, "fv", first_valid);
+  kv_pack(o, "gen", genesis_id);
+  kv_pack(o, "gh", genesis_hash);
+  kv_pack(o, "grp", group);
+  kv_pack(o, "lv", last_valid);
+  kv_pack(o, "lx", lease);
+  kv_pack(o, "nonpart", nonparticipation);
+  kv_pack(o, "note", note);
+  kv_pack(o, "rcv", receiver);
+  kv_pack(o, "rekey", rekey_to);
+  kv_pack(o, "selkey", selection_pk);
+  kv_pack(o, "snd", sender);
+  kv_pack(o, "type", tx_type);
+  kv_pack(o, "votefst", vote_pk);
+  kv_pack(o, "votekd", vote_pk);
+  kv_pack(o, "votekey", vote_pk);
+  kv_pack(o, "votelst", vote_pk);
+  kv_pack(o, "xaid", xfer_asset);
 
-  if (is_present(asset_config_id)) { o.pack("caid"); o.pack(asset_config_id); }
-  if (is_present(asset_params)) { o.pack("apar"); o.pack(asset_params); }
+  kv_pack(o, "apid", application_id);
+  kv_pack(o, "apan", on_complete);
+  kv_pack(o, "apat", accounts);
+  kv_pack(o, "apap", approval_program);
+  kv_pack(o, "apsu", clear_state_program);
+  kv_pack(o, "apaa", app_arguments);
+  kv_pack(o, "apfa", foreign_apps);
+  kv_pack(o, "apas", foreign_assets);
+  kv_pack(o, "apgs", globals);
+  kv_pack(o, "apls", locals);
 
-  if (is_present(asset_transfer_id)) { o.pack("xaid"); o.pack(asset_transfer_id); }
-  if (is_present(asset_amount)) { o.pack("aamt"); o.pack(asset_amount); }
-  if (is_present(asset_sender)) { o.pack("asnd"); o.pack(asset_sender.public_key); }
-  if (is_present(asset_receiver)) { o.pack("arcv"); o.pack(asset_receiver.public_key); }
-  if (is_present(asset_close_to)) { o.pack("aclose"); o.pack(asset_close_to.public_key); }
-
-  if (is_present(freeze_account)) { o.pack("fadd"); o.pack(freeze_account.public_key); }
-  if (is_present(freeze_asset)) { o.pack("faid"); o.pack(freeze_asset); }
-  if (is_present(asset_frozen)) { o.pack("afrz"); o.pack(asset_frozen); }
 
   return o;
 }
