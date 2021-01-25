@@ -6,11 +6,13 @@ transactions, key handling, etc.
 # Complete
  1. algod APIs
  2. mnemonic/address/key handling
-
-# In progress
- 1. Transaction types (payments, key reg, asset config/xfer/freeze)
- 1. Signing (basic single signature is done, need logicsigs, multisigs)
+ 3. All transaction types (provided as static functions on a unified
+    Transaction class)
+ 4. Simple (single account) signatures
+ 5. Logicsigs, including delegated logisigs.
 
 # TODO
+ 1. multisig
  2. indexer APIs
  3. kmd APIs
+ 4. msgpack responses (currently always uses JSON)
