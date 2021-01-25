@@ -142,6 +142,13 @@ Account::seed() const {
 }
 
 bytes
+Account::sign(std::string prefix, bytes msg) const {
+  bytes concat{prefix.begin(), prefix.end()};
+  concat.insert(concat.end(), msg.begin(), msg.end());
+  return sign(concat);
+}
+
+bytes
 Account::sign(bytes msg) const {
   unsigned char sig[crypto_sign_ed25519_BYTES];
   crypto_sign_ed25519_detached(sig, 0, msg.data(), msg.size(), secret_key.data());
@@ -231,10 +238,8 @@ int kv_pack(msgpack::packer<Stream>& o, const char* key, V value) {
 }
 
 LogicSig LogicSig::sign(Account acct) const {
-  bytes msg{'P', 'r', 'o', 'g', 'r', 'a', 'm'};
-  msg.insert(msg.end(), logic.begin(), logic.end());
-  auto sig = acct.sign(msg);
-  return LogicSig{this->logic, this->args, sig};
+  auto sig = acct.sign("Program", logic);
+  return LogicSig{logic, args, sig};
 }
 
 template <typename Stream>
@@ -476,10 +481,7 @@ Transaction::app_call(Address sender,
 }
 
 SignedTransaction Transaction::sign(Account acct) const {
-  bytes msg{'T', 'X'};
-  auto e = encode();
-  msg.insert(msg.end(), e.begin(), e.end());
-  auto sig = acct.sign(msg);
+  auto sig = acct.sign("TX", encode());
   return SignedTransaction{*this, sig};
 }
 

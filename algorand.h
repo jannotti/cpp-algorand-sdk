@@ -54,6 +54,7 @@ public:
 
   std::string mnemonic() const;
   bytes seed() const;
+  bytes sign(std::string prefix, bytes msg) const;
   bytes sign(bytes msg) const;
 
   const bytes public_key() const { return address.public_key; }

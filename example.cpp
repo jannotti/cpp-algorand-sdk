@@ -279,6 +279,7 @@ void logicsig() {
 
   std::cout << "logicsig pass" << std::endl;
 }
+
 int main(int argc, char** argv) {
   base();
   address();
