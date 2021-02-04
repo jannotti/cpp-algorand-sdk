@@ -36,10 +36,10 @@ url_parameters(const string_map& map) {
 
 static int
 curl_request(const std::string& url,
-                        const std::string& method = "GET",
-                        const std::vector<std::string>& headers = {},
-                        const std::string& request_body = "",
-                        const std::string* response_body = nullptr);
+             const std::string& method = "GET",
+             const std::vector<std::string>& headers = {},
+             const std::string& request_body = "",
+             const std::string* response_body = nullptr);
 
 std::string
 maybe_env(std::string name, std::string def = "") {
