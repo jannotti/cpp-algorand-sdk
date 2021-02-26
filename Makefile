@@ -1,9 +1,13 @@
-SOURCE := algorand.cpp base.cpp mnemonic.cpp
+SOURCE := algorand.cpp clients.cpp base.cpp mnemonic.cpp
 
+OS := $(shell uname -s)
+
+ifeq ($(OS),Darwin)
 # On MacOS, brew installed openssl does not end up in system
 # locations, so we need to be explicit.
 IFLAGS += -I/usr/local/opt/openssl/include
 LFLAGS += -L/usr/local/opt/openssl/lib
+endif
 
 LIBS   += -lcurl -lsodium -lcrypto
 

@@ -2,6 +2,7 @@
 #define BASE_H
 
 #include <string>
+#include <vector>
 
 typedef std::vector<unsigned char> bytes;
 

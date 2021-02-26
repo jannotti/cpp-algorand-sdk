@@ -1,7 +1,5 @@
 #include "base.h"
 
-#include <vector>
-
 #define B64DIGITS "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
 std::string b64_encode(const bytes& in, bool padded) {

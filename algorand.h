@@ -17,6 +17,7 @@ struct JsonResponse {
   rapidjson::Value& operator[](const std::string& name) const {
     return (*json)[name];
   }
+  bool succeeded() const { return status == 200; }
 };
 std::ostream& operator<<(std::ostream& os, const JsonResponse& jr);
 
@@ -360,13 +361,13 @@ namespace msgpack {
   } // MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS)
 }
 
-class Algorand {
+class AlgodClient {
 public:
   /**
    * @brief Initialize the client. Reads ALGOD_ADDRESS, ALGOD_TOKEN
    * from environment.
    */
-  Algorand();
+  AlgodClient();
 
   bool healthy(void);
   std::string metrics(void);

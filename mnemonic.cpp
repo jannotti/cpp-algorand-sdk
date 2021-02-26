@@ -5,6 +5,7 @@
 #include <map>
 #include <sstream>
 #include <stdexcept>
+#include <cassert>
 
 #include <openssl/evp.h>
 

@@ -28,38 +28,63 @@ void base() {
   std::cout << "bases passed" << std::endl;
 }
 
-void exercise_rest(int argc, char** argv) {
-    Algorand client;
-  std::cout << client.healthy() << std::endl;
-  std::cout << client.metrics() << std::endl;
-  if (argc > 1) {
-    std::cout << client.account(argv[1]) << std::endl;
-    std::cout << client.transactions_pending(argv[1]) << std::endl;
-  }
-  if (argc > 2) {
-    std::cout << client.application(argv[2]) << std::endl;
-  }
-  if (argc > 3) {
-    std::cout << client.asset(argv[3]) << std::endl;
-  }
-  auto status = client.status();
-  std::cout << status << std::endl;
-  auto last_round = status["last-round"].GetUint64();
-  std::cout << client.block(last_round) << std::endl;
-  std::cout << client.supply() << std::endl;
+void api_basics() {
+  AlgodClient client;
+  assert(client.healthy());
+  auto metrics = client.metrics();
+  assert(metrics.find("ledger_accountsonlinetop_count"));
+  assert(metrics.find("algod_ledger_round"));
 
-  auto after = client.status_after(last_round+1);
-  std::cout << after << std::endl;
+  auto resp = client.status();
+  assert(resp.status == 200);
+  assert(resp["last-round"].GetUint64() > 1);
 
-  std::cout << client.teal_compile("int 1\nreturn") << std::endl;
+  resp = client.supply();
+  assert(resp.status == 200);
+  assert(resp["online-money"].GetUint64() > 1);
+  assert(resp["total-money"].GetUint64() >= resp["online-money"].GetUint64());
 
-  std::cout << client.transaction_params() << std::endl;
-  std::cout << client.transaction_pending() << std::endl;
-  std::cout << client.transaction_pending("junk") << std::endl;
+  resp = client.teal_compile("#pragma version 2\nint 1");
+  std::cout << resp << std::endl;
+  assert(resp.status == 200);
+  assert(!strcmp(resp["hash"].GetString(),
+                 "YOE6C22GHCTKAN3HU4SE5PGIPN5UKXAJTXCQUPJ3KKF5HOAH646MKKCPDA"));
+  assert(!strcmp(resp["result"].GetString(), "AiABASI="));
+
+  resp = client.transaction_params();
+  assert(resp.status == 200);
+  assert(resp["min-fee"].GetUint64() == 1000);
+
+  resp = client.transaction_pending();
+  assert(resp.status == 200);
+  resp = client.transaction_pending("junk");
+  assert(resp.status != 200);
+}
+
+void account(std::string acct) {
+  AlgodClient client;
+  auto resp = client.account(acct);
+  if (!resp.succeeded()) {
+    std::cerr << resp["message"].GetString() << std::endl;
+    return;
+  }
+
+  std::cout <<  *resp.json << std::endl;
+  std::cout << client.transactions_pending(acct) << std::endl;
+}
+
+void application(std::string app) {
+  AlgodClient client;
+  std::cout << client.application(app) << std::endl;
+}
+
+void asset(std::string asset) {
+  AlgodClient client;
+  std::cout << client.asset(asset) << std::endl;
 }
 
 void end_to_end() {
-  Algorand client;
+  AlgodClient client;
   auto resp = client.transaction_params();
   assert(resp.status == 200);
   const auto& suggested = *resp.json;
@@ -288,5 +313,16 @@ int main(int argc, char** argv) {
   transaction();
   signing();
   logicsig();
-  // exercise_rest(argc, argv);
+  api_basics();
+  if (argc > 2) {
+    if (std::string(argv[1]) == "account") {
+      account(argv[2]);
+    }
+    if (std::string(argv[1]) == "asset") {
+      asset(argv[2]);
+    }
+    if (std::string(argv[1]) == "app") {
+      application(argv[2]);
+    }
+  }
 }
