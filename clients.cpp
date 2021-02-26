@@ -69,6 +69,11 @@ AlgodClient::healthy(void) {
   return resp.status == 200;
 }
 
+JsonResponse
+AlgodClient::genesis(void) {
+  return get("/genesis");
+}
+
 std::string
 AlgodClient::metrics(void) {
   // Candidate for refactoring to avoid repetition

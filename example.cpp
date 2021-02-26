@@ -30,12 +30,16 @@ void base() {
 
 void api_basics() {
   AlgodClient client;
+
+  auto resp = client.genesis();
+  assert(resp["alloc"].IsArray());
+
   assert(client.healthy());
   auto metrics = client.metrics();
   assert(metrics.find("ledger_accountsonlinetop_count"));
   assert(metrics.find("algod_ledger_round"));
 
-  auto resp = client.status();
+  resp = client.status();
   assert(resp.status == 200);
   assert(resp["last-round"].GetUint64() > 1);
 
@@ -45,7 +49,6 @@ void api_basics() {
   assert(resp["total-money"].GetUint64() >= resp["online-money"].GetUint64());
 
   resp = client.teal_compile("#pragma version 2\nint 1");
-  std::cout << resp << std::endl;
   assert(resp.status == 200);
   assert(!strcmp(resp["hash"].GetString(),
                  "YOE6C22GHCTKAN3HU4SE5PGIPN5UKXAJTXCQUPJ3KKF5HOAH646MKKCPDA"));

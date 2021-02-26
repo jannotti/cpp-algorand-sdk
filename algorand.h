@@ -369,6 +369,7 @@ public:
    */
   AlgodClient();
 
+  JsonResponse  genesis(void);
   bool healthy(void);
   std::string metrics(void);
   JsonResponse account(std::string address);
