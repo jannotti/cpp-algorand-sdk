@@ -54,13 +54,8 @@ require_env(std::string name) {
   return found;
 }
 
-AlgodClient::AlgodClient() {
-  algod_address = require_env("ALGOD_ADDRESS");
-  algod_token = require_env("ALGOD_TOKEN");
-  kmd_address = maybe_env("KMD_ADDRESS");
-  kmd_token = maybe_env("KMD_TOKEN", algod_token);
-  indexer_address = maybe_env("INDEXER_ADDRESS");
-  indexer_token = maybe_env("INDEXER_TOKEN", algod_token);
+AlgodClient::AlgodClient() :
+  RestClient(require_env("ALGOD_ADDRESS"), "X-Algo-API-Token: "+std::string(require_env("ALGOD_TOKEN"))) {
 }
 
 bool
@@ -78,8 +73,8 @@ std::string
 AlgodClient::metrics(void) {
   // Candidate for refactoring to avoid repetition
   std::string response_body;
-  int status = curl_request(algod_address + "/metrics", "GET",
-                            {"X-Algo-API-Token: "+algod_token},
+  int status = curl_request(prefix + "/metrics", "GET",
+                            {authorization},
                             "", &response_body);
   if (status == 200)
     return response_body;
@@ -267,23 +262,33 @@ json_parse(std::string body) {
 }
 
 JsonResponse
-AlgodClient::api(const std::string& route,
+RestClient::api(const std::string& route,
               const std::string& method,
               const std::string& request_body) {
   std::string response_body;
-  int status = curl_request(algod_address + route, method,
+  int status = curl_request(prefix + route, method,
                             {"Accept: application/json",
-                             "X-Algo-API-Token: "+algod_token},
+                             authorization},
                             request_body, &response_body);
   if (response_body.empty())
     return JsonResponse{status, nullptr};
   return JsonResponse{status, json_parse(response_body)};
 }
 
-JsonResponse AlgodClient::get(const std::string& route) {
+JsonResponse RestClient::get(const std::string& route) {
   return api(route, "GET", "");
 }
 
-JsonResponse AlgodClient::post(const std::string& route, const std::string& body) {
+JsonResponse RestClient::post(const std::string& route, const std::string& body) {
   return api(route, "POST", body);
+}
+
+IndexerClient::IndexerClient() :
+  RestClient(require_env("INDEXER_ADDRESS"), "X-Indexer-Token: " + std::string(require_env("INDEXER_TOKEN"))) {
+}
+
+bool
+IndexerClient::healthy(void) {
+  auto resp(get("/health"));
+  return resp.status == 200;
 }

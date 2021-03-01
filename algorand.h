@@ -361,7 +361,42 @@ namespace msgpack {
   } // MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS)
 }
 
-class AlgodClient {
+class RestClient {
+public:
+  RestClient(std::string prefix, std::string authorization) :
+    prefix(prefix), authorization(authorization) { }
+  /**
+   * @brief Return the requested information from the API using method
+   * @param route API route.
+   * @param method HTTP method to make the request with
+   * @param request_body raw bytes to be sent as body of request
+   * @return JsonResponse with the status code and JSON value from response
+   */
+  JsonResponse api(const std::string& route,
+                   const std::string& method,
+                   const std::string& request_body = "");
+
+  /**
+   * @brief Return the requested information from the API using a GET
+   * @param route API route.
+   * @return string containing the requested information.
+   */
+  JsonResponse get(const std::string& route);
+
+  /**
+   * @brief Return the requested information from the API using a POST
+   * @param route API route.
+   * @param body Raw bytes to send as body. "" means no body.
+   * @return string containing the requested information.
+   */
+  JsonResponse post(const std::string& route, const std::string& body = "");
+
+protected:
+  std::string prefix;
+  std::string authorization;
+};
+
+class AlgodClient : RestClient {
 public:
   /**
    * @brief Initialize the client. Reads ALGOD_ADDRESS, ALGOD_TOKEN
@@ -390,41 +425,16 @@ public:
   JsonResponse transaction_submit(std::string raw);
   JsonResponse transaction_params();
   JsonResponse transaction_pending(std::string txid = "");
-
-private:
-  std::string algod_address;    // Acts as prefix for REST requests
-  std::string algod_token;      // Authorizes API access
-  std::string kmd_address;      // Acts as prefix for REST requests
-  std::string kmd_token;        // Authorizes API access
-  std::string indexer_address;  // Acts as prefix for REST requests
-  std::string indexer_token;    // Authorizes API access
-
-public:
-  /**
-   * @brief Return the requested information from the API using method
-   * @param route API route.
-   * @param method HTTP method to make the request with
-   * @param request_body raw bytes to be sent as body of request
-   * @return JsonResponse with the status code and JSON value from response
-   */
-  JsonResponse api(const std::string& route,
-                   const std::string& method,
-                   const std::string& request_body = "");
-
-  /**
-   * @brief Return the requested information from the API using a GET
-   * @param route API route.
-   * @return string containing the requested information.
-   */
-  JsonResponse get(const std::string& route);
-
-  /**
-   * @brief Return the requested information from the API using a POST
-   * @param route API route.
-   * @param body Raw bytes to send as body. "" means no body.
-   * @return string containing the requested information.
-   */
-  JsonResponse post(const std::string& route, const std::string& body = "");
 };
 
+class IndexerClient : RestClient {
+public:
+  /**
+   * @brief Initialize the client. Reads INDEXER_ADDRESS, INDEXER_TOKEN
+   * from environment.
+   */
+  IndexerClient();
+  bool healthy(void);
+  JsonResponse accounts(std::string address);
+};
 #endif
