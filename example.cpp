@@ -324,14 +324,6 @@ void logicsig() {
 }
 
 int main(int argc, char** argv) {
-  base();
-  address();
-  mnemonic();
-  account();
-  transaction();
-  signing();
-  logicsig();
-  api_basics();
   if (argc > 2) {
     if (std::string(argv[1]) == "account") {
       account(argv[2]);
@@ -342,5 +334,19 @@ int main(int argc, char** argv) {
     if (std::string(argv[1]) == "app") {
       application(argv[2]);
     }
+    if (std::string(argv[1]) == "mnemonic") {
+      Account acct = Account::from_mnemonic(argv[2]);
+      std::cout << acct.address << std::endl;
+      account(acct.address.as_string);
+    }
+  } else {
+    base();
+    address();
+    mnemonic();
+    account();
+    transaction();
+    signing();
+    logicsig();
+    api_basics();
   }
 }

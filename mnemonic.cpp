@@ -42,6 +42,14 @@ std::vector<std::string> make_word_vector(std::string s) {
   return vec;
 }
 
+int word_lookup(std::string word) {
+  std::cout << word << std::endl;
+  auto entry = word_map.find(word);
+  if (entry == word_map.end())
+    throw std::invalid_argument(word.c_str());
+  return entry->second;
+}
+
 uint16_t checksum(bytes b) {
   auto hash = sha512_256(b);
   auto ints = b2048_encode(bytes{hash.begin(), hash.begin()+2});
@@ -57,21 +65,22 @@ std::string mnemonic_from_seed(bytes seed) {
   return mnemonic;
 }
 
+
+
+
 bytes seed_from_mnemonic(std::string mnemonic) {
   std::vector<std::string> words = make_word_vector(mnemonic);
   auto checkword = words.back();
   words.pop_back();
-  assert(words.size() == 24);
-  const auto& checkentry = word_map.find(checkword);
-  assert(checkentry != word_map.end());
+  if (words.size() != 24)
+    throw std::invalid_argument(std::to_string(words.size()));
+  auto checkval = word_lookup(checkword);
   bytes seed;
   // this part is base conversion, 11 to 8. see base.cpp
   unsigned val = 0;
   int bits = 0;
   for (const auto& word : words) {
-    auto entry = word_map.find(word);
-    assert (entry != word_map.end());
-    val |= (entry->second << bits);
+    val |= word_lookup(word) << bits;
     bits += 11;
     while (bits >= 8) {
       seed.push_back(val & 0xFF);
@@ -85,8 +94,8 @@ bytes seed_from_mnemonic(std::string mnemonic) {
   assert(!*(seed.end()-1));      // last byte is supposed to be zero
   seed.pop_back();               // and unneeded
   auto check = checksum(seed);
-  if (check != checkentry->second) {
-    throw std::invalid_argument(word_vec[check]);
+  if (check != checkval) {
+    throw std::invalid_argument(word_vec[check] + " != " + word_vec[checkval]);
   }
   return seed;
 }
