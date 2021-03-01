@@ -49,10 +49,13 @@ void api_basics() {
   assert(resp["total-money"].GetUint64() >= resp["online-money"].GetUint64());
 
   resp = client.teal_compile("#pragma version 2\nint 1");
-  assert(resp.status == 200);
-  assert(!strcmp(resp["hash"].GetString(),
-                 "YOE6C22GHCTKAN3HU4SE5PGIPN5UKXAJTXCQUPJ3KKF5HOAH646MKKCPDA"));
-  assert(!strcmp(resp["result"].GetString(), "AiABASI="));
+  if (resp.status != 404) {
+    // some algods don't have it configured on
+    assert(resp.status == 200);
+    assert(!strcmp(resp["hash"].GetString(),
+                   "YOE6C22GHCTKAN3HU4SE5PGIPN5UKXAJTXCQUPJ3KKF5HOAH646MKKCPDA"));
+    assert(!strcmp(resp["result"].GetString(), "AiABASI="));
+  }
 
   resp = client.transaction_params();
   assert(resp.status == 200);
@@ -64,26 +67,38 @@ void api_basics() {
   assert(resp.status != 200);
 }
 
-void account(std::string acct) {
+void account(std::string addr) {
   AlgodClient client;
-  auto resp = client.account(acct);
+  auto resp = client.account(addr);
   if (!resp.succeeded()) {
     std::cerr << resp["message"].GetString() << std::endl;
     return;
   }
 
   std::cout <<  *resp.json << std::endl;
-  std::cout << client.transactions_pending(acct) << std::endl;
+  std::cout << client.transactions_pending(addr) << std::endl;
 }
 
-void application(std::string app) {
+void application(std::string id) {
   AlgodClient client;
-  std::cout << client.application(app) << std::endl;
+  auto resp = client.application(id);
+  if (!resp.succeeded()) {
+    std::cerr << resp["message"].GetString() << std::endl;
+    return;
+  }
+
+  std::cout <<  *resp.json << std::endl;
 }
 
-void asset(std::string asset) {
+void asset(std::string id) {
   AlgodClient client;
-  std::cout << client.asset(asset) << std::endl;
+  auto resp = client.asset(id);
+  if (!resp.succeeded()) {
+    std::cerr << resp["message"].GetString() << std::endl;
+    return;
+  }
+
+  std::cout <<  *resp.json << std::endl;
 }
 
 void end_to_end() {
