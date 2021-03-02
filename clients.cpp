@@ -83,22 +83,26 @@ AlgodClient::metrics(void) {
 
 JsonResponse
 AlgodClient::account(std::string address) {
+  assert(!address.empty());
   return get("/v2/accounts/" + address + "?format=json");
 }
 
 JsonResponse
 AlgodClient::transactions_pending(std::string address, unsigned max) {
+  assert(!address.empty());
   return get("/v2/accounts/" + address +
              "/transactions/pending?format=json&max=" + std::to_string(max));
 }
 
 JsonResponse
 AlgodClient::application(std::string id) {
+  assert(!id.empty());
   return get("/v2/applications/" + id);
 }
 
 JsonResponse
 AlgodClient::asset(std::string id) {
+  assert(!id.empty());
   return get("/v2/assets/" + id);
 }
 
