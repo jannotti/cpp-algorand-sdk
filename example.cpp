@@ -101,6 +101,43 @@ void asset(std::string id) {
   std::cout <<  *resp.json << std::endl;
 }
 
+struct Holding {
+  uint64_t amount;
+  uint64_t assetId;
+  Address creator;
+  bool frozen;
+};
+std::unique_ptr<Holding> holding(std::string addr, std::string asa) {
+  auto id = std::strtoull(asa.c_str(), 0, 10);
+  AlgodClient client;
+  auto resp = client.account(addr);
+  if (!resp.succeeded()) {
+    std::cerr << resp["message"].GetString() << std::endl;
+    return 0;
+  }
+  auto& assets = resp["assets"];
+  for (auto asset = assets.Begin(); asset != assets.End(); asset++) {
+    auto aid = (*asset)["asset-id"].GetUint64();
+    if (aid == id)
+      return std::make_unique<Holding>(Holding{
+          (*asset)["amount"].GetUint64(),
+          (*asset)["asset-id"].GetUint64(),
+          Address{(*asset)["creator"].GetString()},
+          (*asset)["is-frozen"].GetBool()});
+  }
+  return 0;
+}
+
+bool opted_in(std::string addr, std::string asa) {
+  std::unique_ptr<Holding> h = holding(addr, asa);
+  return h ? true : false;
+}
+
+bool frozen(std::string addr, std::string asa) {
+  std::unique_ptr<Holding> h = holding(addr, asa);
+  return h->frozen;
+}
+
 void end_to_end() {
   AlgodClient client;
   auto resp = client.transaction_params();
@@ -325,16 +362,26 @@ void logicsig() {
 
 int main(int argc, char** argv) {
   if (argc > 2) {
-    if (std::string(argv[1]) == "account") {
+    auto cmd = std::string(argv[1]);
+    if (cmd == "account") {
       account(argv[2]);
     }
-    if (std::string(argv[1]) == "asset") {
+    if (cmd == "asset" || cmd == "asa") {
       asset(argv[2]);
     }
-    if (std::string(argv[1]) == "app") {
+    if (cmd == "app" || cmd == "application") {
       application(argv[2]);
     }
-    if (std::string(argv[1]) == "mnemonic") {
+    if (cmd == "opted-in") {
+      assert(argc == 4);
+      std::cout << opted_in(argv[2], argv[3]) << std::endl;
+    }
+    if (cmd == "asset-balance") {
+      assert(argc == 4);
+      std::unique_ptr<Holding> h = holding(argv[2], argv[3]);
+      std::cout << h->amount << std::endl;
+    }
+    if (cmd == "mnemonic") {
       Account acct = Account::from_mnemonic(argv[2]);
       std::cout << acct.address << std::endl;
       account(acct.address.as_string);
