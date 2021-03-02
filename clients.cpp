@@ -325,6 +325,18 @@ IndexerClient::accounts(uint64_t limit, std::string next_page,
 
   return get("/v2/accounts"+url_parameters(params));
 }
+
+JsonResponse IndexerClient::account(Address addr, uint64_t round) {
+  std::string url("/v2/accounts/"+addr.as_string);
+  if (round > 0)
+    url += "?round=" + std::to_string(round);
+  return get(url);
+}
+
+JsonResponse IndexerClient::block(uint64_t round) {
+  return get("/v2/blocks/"+std::to_string(round));
+}
+
 bool
 IndexerClient::healthy(void) {
   auto resp(get("/health"));

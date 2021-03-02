@@ -443,5 +443,7 @@ public:
                         uint64_t held_asset=0, uint64_t min_bal=0, uint64_t max_bal=0,
                         uint64_t optedin_app=0,
                         Address auth_addr=Address(), uint64_t as_of=0);
+  JsonResponse account(Address addr, uint64_t round=0);
+  JsonResponse block(uint64_t round=0);
 };
 #endif

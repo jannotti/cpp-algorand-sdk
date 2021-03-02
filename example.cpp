@@ -364,6 +364,11 @@ void indexer_basics() {
   IndexerClient client;
   auto resp = client.accounts();
   std::cout << resp << std::endl;
+  Address addr("CKNVTB7DPRZO3MB64RQFPZIHCHCC4GBSTAAJKVQ2SLYNKVYPK4EJFBCQKM");
+  resp = client.account(addr, 2);
+  std::cout << resp << std::endl;
+  resp = client.block(2);
+  std::cout << resp << std::endl;
 }
 
 int main(int argc, char** argv) {
