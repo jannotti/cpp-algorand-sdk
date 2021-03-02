@@ -408,9 +408,13 @@ public:
   bool healthy(void);
   std::string metrics(void);
   JsonResponse account(std::string address);
+  JsonResponse account(const Address& addr) { return account(addr.as_string); }
+  JsonResponse account(const Account& acct) { return account(acct.address); }
   JsonResponse transactions_pending(std::string address, unsigned max = 0);
   JsonResponse application(std::string id);
+  JsonResponse application(uint64_t id) { return asset(std::to_string(id)); }
   JsonResponse asset(std::string id);
+  JsonResponse asset(uint64_t id) { return asset(std::to_string(id)); }
   JsonResponse block(uint64_t round);
   JsonResponse catchup(std::string catchpoint);
   JsonResponse abort_catchup(std::string catchpoint);
