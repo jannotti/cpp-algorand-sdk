@@ -267,8 +267,8 @@ json_parse(std::string body) {
 
 JsonResponse
 RestClient::api(const std::string& route,
-              const std::string& method,
-              const std::string& request_body) {
+                const std::string& method,
+                const std::string& request_body) {
   std::string response_body;
   int status = curl_request(prefix + route, method,
                             {"Accept: application/json",
@@ -288,9 +288,43 @@ JsonResponse RestClient::post(const std::string& route, const std::string& body)
 }
 
 IndexerClient::IndexerClient() :
-  RestClient(require_env("INDEXER_ADDRESS"), "X-Indexer-Token: " + std::string(require_env("INDEXER_TOKEN"))) {
+  RestClient(require_env("INDEXER_ADDRESS"),
+             "X-Indexer-Token: " + std::string(require_env("INDEXER_TOKEN"))) {
 }
 
+JsonResponse
+IndexerClient::accounts(uint64_t limit, std::string next_page,
+                        uint64_t held_asset, uint64_t min_bal, uint64_t max_bal,
+                        uint64_t optedin_app,
+                        Address auth_addr, uint64_t as_of) {
+  string_map params;
+  if (limit != 0)
+    params["limit"] = std::to_string(limit);
+  if (next_page.size())
+    params["next"] = next_page;
+
+  // asset related
+  if (held_asset != 0)
+    params["asset-id"] = std::to_string(held_asset);
+  if (min_bal > 0)
+    params["currency-greater-than"] = std::to_string(min_bal);
+  if (max_bal > 0)
+    params["currency-less-than"] = std::to_string(max_bal);
+
+  // app related
+  if (optedin_app != 0)
+    params["application-id"] = std::to_string(optedin_app);
+
+  // rekeying
+  if (!auth_addr.is_zero())
+    params["auth-addr"] = auth_addr.as_string;
+
+  // time travel
+  if (as_of > 0)
+    params["round"] = std::to_string(as_of);
+
+  return get("/v2/accounts"+url_parameters(params));
+}
 bool
 IndexerClient::healthy(void) {
   auto resp(get("/health"));

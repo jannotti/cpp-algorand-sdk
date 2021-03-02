@@ -28,7 +28,7 @@ void base() {
   std::cout << "bases passed" << std::endl;
 }
 
-void api_basics() {
+void algod_basics() {
   AlgodClient client;
 
   auto resp = client.genesis();
@@ -360,6 +360,12 @@ void logicsig() {
   std::cout << "logicsig pass" << std::endl;
 }
 
+void indexer_basics() {
+  IndexerClient client;
+  auto resp = client.accounts();
+  std::cout << resp << std::endl;
+}
+
 int main(int argc, char** argv) {
   if (argc > 2) {
     auto cmd = std::string(argv[1]);
@@ -386,6 +392,7 @@ int main(int argc, char** argv) {
       std::cout << acct.address << std::endl;
       account(acct.address.as_string);
     }
+
   } else {
     base();
     address();
@@ -394,6 +401,7 @@ int main(int argc, char** argv) {
     transaction();
     signing();
     logicsig();
-    api_basics();
+    algod_basics();
+    indexer_basics();
   }
 }

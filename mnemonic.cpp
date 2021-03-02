@@ -43,7 +43,6 @@ std::vector<std::string> make_word_vector(std::string s) {
 }
 
 int word_lookup(std::string word) {
-  std::cout << word << std::endl;
   auto entry = word_map.find(word);
   if (entry == word_map.end())
     throw std::invalid_argument(word.c_str());

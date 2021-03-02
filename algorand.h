@@ -439,6 +439,9 @@ public:
    */
   IndexerClient();
   bool healthy(void);
-  JsonResponse accounts(std::string address);
+  JsonResponse accounts(uint64_t limit=20, std::string next_page="",
+                        uint64_t held_asset=0, uint64_t min_bal=0, uint64_t max_bal=0,
+                        uint64_t optedin_app=0,
+                        Address auth_addr=Address(), uint64_t as_of=0);
 };
 #endif
