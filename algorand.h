@@ -116,6 +116,32 @@ public:
   bytes sig;
 };
 
+class Subsig {
+public:
+  Subsig(bytes public_key, bytes signature={});
+
+  template <typename Stream>
+  msgpack::packer<Stream>& pack(msgpack::packer<Stream>& o) const;
+
+  bytes public_key;
+  bytes signature;
+};
+
+class MultiSig {
+public:
+  MultiSig(std::vector<Address> addrs={}, uint64_t threshold=0);
+
+  template <typename Stream>
+  msgpack::packer<Stream>& pack(msgpack::packer<Stream>& o) const;
+
+  /* Create a new Multisig with the extra signature of Account */
+  MultiSig sign(Account) const;
+
+  std::vector<Subsig> sigs;
+  uint64_t threshold;
+  uint64_t version = 1;
+};
+
 /* We use a single transaction class to represent all transaction
    types.  While it might seem natural to have Payment, AssetCreate
    and so on as subclasses, it would complicate msgpacking. Standard
@@ -276,6 +302,7 @@ class SignedTransaction {
 public:
   SignedTransaction(const Transaction& txn, bytes signature);
   SignedTransaction(const Transaction& txn, LogicSig logic);
+  SignedTransaction(const Transaction& txn, MultiSig multi);
   bytes encode() const;
 
   template <typename Stream>
@@ -285,6 +312,7 @@ public:
 private:
   bytes sig;
   LogicSig lsig;
+  MultiSig msig;
   Address signer;
   Transaction txn;
 };
@@ -309,6 +337,24 @@ namespace msgpack {
         template <typename Stream>
         packer<Stream>&
         operator()(msgpack::packer<Stream>& o, LogicSig const& v) const {
+          return v.pack<Stream>(o);
+        }
+      };
+
+      template<>
+      struct pack<Subsig> {
+        template <typename Stream>
+        packer<Stream>&
+        operator()(msgpack::packer<Stream>& o, Subsig const& v) const {
+          return v.pack<Stream>(o);
+        }
+      };
+
+      template<>
+      struct pack<MultiSig> {
+        template <typename Stream>
+        packer<Stream>&
+        operator()(msgpack::packer<Stream>& o, MultiSig const& v) const {
           return v.pack<Stream>(o);
         }
       };

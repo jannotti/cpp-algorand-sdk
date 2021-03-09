@@ -169,6 +169,9 @@ bool is_present(Address a) {
 bool is_present(LogicSig lsig) {
   return is_present(lsig.logic);
 };
+bool is_present(MultiSig msig) {
+  return msig.threshold > 0;
+};
 bool is_present(AssetParams ap) {
   return ap.key_count() > 0;
 };
@@ -211,16 +214,47 @@ msgpack::packer<Stream>& LogicSig::pack(msgpack::packer<Stream>& o) const {
   return o;
 }
 
+Subsig::Subsig(bytes public_key, bytes signature)
+  : public_key(public_key), signature(signature) { }
+
+template <typename Stream>
+msgpack::packer<Stream>& Subsig::pack(msgpack::packer<Stream>& o) const {
+  o.pack_map(1 + is_present(signature));
+  kv_pack(o, "pk", public_key);
+  kv_pack(o, "s", signature);
+  return o;
+}
+
+MultiSig::MultiSig(std::vector<Address> addrs, uint64_t threshold) :
+  threshold(threshold ? threshold : addrs.size()) {
+  for (const auto& addr : addrs) {
+    sigs.push_back(Subsig(addr.public_key));
+  }
+}
+
+template <typename Stream>
+msgpack::packer<Stream>& MultiSig::pack(msgpack::packer<Stream>& o) const {
+  o.pack_map(3);
+  o.pack("subsigs"); o.pack(sigs);
+  kv_pack(o, "thr", threshold);
+  kv_pack(o, "v", version);
+  return o;
+}
+
 SignedTransaction::SignedTransaction(const Transaction& txn, bytes signature) :
   sig(signature), txn(txn) { }
 
 SignedTransaction::SignedTransaction(const Transaction& txn, LogicSig logic) :
   lsig(logic), txn(txn) { }
 
+SignedTransaction::SignedTransaction(const Transaction& txn, MultiSig multi) :
+  msig(multi), txn(txn) { }
+
 template <typename Stream>
 msgpack::packer<Stream>& SignedTransaction::pack(msgpack::packer<Stream>& o) const {
   o.pack_map(2 + is_present(signer)); // one of the sig types, txn, and maybe sgnr
   kv_pack(o, "lsig", lsig);
+  kv_pack(o, "msig", msig);
   kv_pack(o, "sgnr", signer);
   kv_pack(o, "sig", sig);
   kv_pack(o, "txn", txn);

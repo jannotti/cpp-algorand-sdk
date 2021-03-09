@@ -289,7 +289,7 @@ JsonResponse RestClient::post(const std::string& route, const std::string& body)
 
 IndexerClient::IndexerClient() :
   RestClient(require_env("INDEXER_ADDRESS"),
-             "X-Indexer-Token: " + std::string(require_env("INDEXER_TOKEN"))) {
+             "X-Indexer-API-Token: " + std::string(require_env("INDEXER_TOKEN"))) {
 }
 
 JsonResponse

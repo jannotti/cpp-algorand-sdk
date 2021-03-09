@@ -65,6 +65,8 @@ void algod_basics() {
   assert(resp.status == 200);
   resp = client.transaction_pending("junk");
   assert(resp.status != 200);
+
+  std::cout << "algod pass" << std::endl;
 }
 
 void account(std::string addr) {
@@ -75,8 +77,9 @@ void account(std::string addr) {
     return;
   }
 
-  std::cout <<  *resp.json << std::endl;
-  std::cout << client.transactions_pending(addr) << std::endl;
+  std::cout << *resp.json << std::endl;
+  resp = client.transactions_pending(addr);
+  assert(resp.succeeded());
 }
 
 void application(std::string id) {
@@ -369,6 +372,7 @@ void indexer_basics() {
   std::cout << resp << std::endl;
   resp = client.block(2);
   std::cout << resp << std::endl;
+  std::cout << "indexer pass" << std::endl;
 }
 
 int main(int argc, char** argv) {
