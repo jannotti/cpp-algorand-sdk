@@ -402,6 +402,45 @@ int main(int argc, char** argv) {
       account(acct.address.as_string);
     }
 
+    if (cmd == "pay") {
+      AlgodClient client;
+      auto resp = client.transaction_params();
+      assert(resp.status == 200);
+      const auto& suggested = *resp.json;
+
+      Account snd = Account::from_mnemonic(argv[2]);
+      Account rcv = Account(argv[3]);
+      uint64_t amt = std::stol(argv[4]);
+      Transaction pay =
+        Transaction::payment(snd.public_key(), rcv.public_key(),
+                             amt, {},
+                             suggested["min-fee"].GetUint64(),
+                             suggested["last-round"].GetUint64()+1,
+                             suggested["last-round"].GetUint64()+1001,
+                             suggested["genesis-id"].GetString(),
+                             b64_decode(suggested["genesis-hash"].GetString()),
+                             {}, {}, {});
+
+      {
+        std::stringstream buffer;
+        msgpack::pack(buffer, pay);
+        std::ofstream ofs("pay.txn");
+        ofs << buffer.str();
+      }
+
+      SignedTransaction stxn = pay.sign(snd);
+
+      {
+        std::stringstream buffer;
+        msgpack::pack(buffer, stxn);
+        std::ofstream ofs("pay.stxn");
+        ofs << buffer.str();
+        resp = client.transaction_submit(buffer.str());
+        assert(resp.status == 200);
+        std::cout << resp << std::endl;
+      }
+
+    }
   } else {
     base();
     address();
