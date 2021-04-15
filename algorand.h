@@ -11,6 +11,9 @@
 std::ostream& operator<<(std::ostream& os, const rapidjson::Value&);
 std::string json_to_string(const rapidjson::Value&);
 
+std::string maybe_env(std::string name, std::string def = "");
+std::string require_env(std::string name);
+
 struct JsonResponse {
   int status;
   std::unique_ptr<rapidjson::Document> json;
@@ -41,6 +44,12 @@ inline bool operator==(const Address& lhs, const Address& rhs) {
 inline bool operator!=(const Address& lhs, const Address& rhs) {
   return !(lhs == rhs);
 }
+inline bool operator <(const Address& lhs, const Address& rhs ) {
+  return lhs.as_string < rhs.as_string;
+}
+
+std::ostream& operator<<(std::ostream& os, const Address& addr);
+
 
 class Account {
 public:
@@ -298,6 +307,8 @@ public:
   bytes encode() const;
 };
 
+std::ostream& operator<<(std::ostream& os, const Transaction& txn);
+
 class SignedTransaction {
 public:
   SignedTransaction(const Transaction& txn, bytes signature);
@@ -442,7 +453,7 @@ protected:
   std::string authorization;
 };
 
-class AlgodClient : RestClient {
+class AlgodClient : public RestClient {
 public:
   /**
    * @brief Initialize the client. Reads ALGOD_ADDRESS, ALGOD_TOKEN
@@ -450,17 +461,23 @@ public:
    */
   AlgodClient();
 
-  JsonResponse  genesis(void);
+  JsonResponse genesis(void);
   bool healthy(void);
   std::string metrics(void);
+
+  virtual std::string account_url(std::string address);
   JsonResponse account(std::string address);
   JsonResponse account(const Address& addr) { return account(addr.as_string); }
   JsonResponse account(const Account& acct) { return account(acct.address); }
+
   JsonResponse transactions_pending(std::string address, unsigned max = 0);
   JsonResponse application(std::string id);
   JsonResponse application(uint64_t id) { return asset(std::to_string(id)); }
+
+  virtual std::string asset_url(std::string id);
   JsonResponse asset(std::string id);
   JsonResponse asset(uint64_t id) { return asset(std::to_string(id)); }
+
   JsonResponse block(uint64_t round);
   JsonResponse catchup(std::string catchpoint);
   JsonResponse abort_catchup(std::string catchpoint);
@@ -472,9 +489,14 @@ public:
   JsonResponse teal_compile(std::string source);
   JsonResponse teal_dryrun(rapidjson::Value& request);
 
-  JsonResponse transaction_submit(std::string raw);
-  JsonResponse transaction_params();
+  virtual std::string submit_url();
+  JsonResponse submit(std::string raw);
+  JsonResponse submit(const SignedTransaction& stxn);
+  JsonResponse submit(const std::vector<SignedTransaction> stxn);
   JsonResponse transaction_pending(std::string txid = "");
+
+  virtual std::string params_url();
+  JsonResponse params();
 };
 
 class IndexerClient : RestClient {

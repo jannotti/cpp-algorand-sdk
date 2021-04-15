@@ -72,7 +72,7 @@ bytes seed_from_mnemonic(std::string mnemonic) {
   auto checkword = words.back();
   words.pop_back();
   if (words.size() != 24)
-    throw std::invalid_argument(std::to_string(words.size()));
+    throw std::invalid_argument(std::to_string(words.size()+1) + " words");
   auto checkval = word_lookup(checkword);
   bytes seed;
   // this part is base conversion, 11 to 8. see base.cpp

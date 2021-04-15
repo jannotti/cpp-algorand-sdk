@@ -36,15 +36,15 @@ curl_request(const std::string& url,
              const std::string& request_body = "",
              const std::string* response_body = nullptr);
 
-static std::string
-maybe_env(std::string name, std::string def = "") {
+std::string
+maybe_env(std::string name, std::string def) {
   const char* found = getenv(name.c_str());
   if (found)
     return found;
   return def;
 }
 
-static std::string
+std::string
 require_env(std::string name) {
   const char* found = getenv(name.c_str());
   if (!found) {
@@ -81,10 +81,15 @@ AlgodClient::metrics(void) {
   return "";
 }
 
+std::string
+AlgodClient::account_url(std::string address) {
+  return "/v2/accounts/" + address + "?format=json";
+}
+
 JsonResponse
 AlgodClient::account(std::string address) {
   assert(!address.empty());
-  return get("/v2/accounts/" + address + "?format=json");
+  return get(account_url(address));
 }
 
 JsonResponse
@@ -100,10 +105,15 @@ AlgodClient::application(std::string id) {
   return get("/v2/applications/" + id);
 }
 
+std::string
+AlgodClient::asset_url(std::string id) {
+  return "/v2/assets/" + id;
+}
+
 JsonResponse
 AlgodClient::asset(std::string id) {
   assert(!id.empty());
-  return get("/v2/assets/" + id);
+  return get(asset_url(id));
 }
 
 JsonResponse
@@ -155,15 +165,41 @@ AlgodClient::teal_dryrun(rapidjson::Value& request) {
   return post("/v2/teal/dryrun", json_to_string(request));
 }
 
-JsonResponse
-AlgodClient::transaction_submit(std::string rawtxn) {
-  return post("/v2/transactions", rawtxn);
+std::string
+AlgodClient::submit_url() {
+  return "/v2/transactions";
 }
 
 JsonResponse
-AlgodClient::transaction_params() {
-  return get("/v2/transactions/params");
+AlgodClient::submit(std::string rawtxn) {
+  return post(submit_url(), rawtxn);
 }
+
+JsonResponse
+AlgodClient::submit(const SignedTransaction& stxn) {
+  std::stringstream buffer;
+  msgpack::pack(buffer, stxn);
+  return submit(buffer.str());
+}
+
+JsonResponse
+AlgodClient::submit(std::vector <SignedTransaction> txgroup) {
+  std::stringstream buffer;
+  for (auto& txn : txgroup)
+    msgpack::pack(buffer, txn);
+  return submit(buffer.str());
+}
+
+std::string
+AlgodClient::params_url() {
+  return "/v2/transactions/params";
+}
+
+JsonResponse
+AlgodClient::params() {
+  return get(params_url());
+}
+
 JsonResponse
 AlgodClient::transaction_pending(std::string txid) {
   if (txid.empty())

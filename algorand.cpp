@@ -69,6 +69,11 @@ Address::Address(bytes public_key, bytes checksummed) :
   assert(public_key.size() == 32);
 }
 
+std::ostream&
+operator<<(std::ostream& os, const Address& addr) {
+  os << addr.as_string;
+  return os;
+}
 
 std::pair<bytes,bytes>
 Account::generate_keys(bytes seed) {
@@ -110,6 +115,7 @@ Account::sign(std::string prefix, bytes msg) const {
 
 bytes
 Account::sign(bytes msg) const {
+  assert(secret_key.size() == crypto_sign_ed25519_SECRETKEYBYTES);
   unsigned char sig[crypto_sign_ed25519_BYTES];
   crypto_sign_ed25519_detached(sig, 0, msg.data(), msg.size(), secret_key.data());
   auto s = bytes{sig, &sig[sizeof(sig)]};
@@ -147,7 +153,7 @@ std::string Account::mnemonic() const {
 
 std::ostream&
 operator<<(std::ostream& os, const Account& acct) {
-  os << acct.address.as_string;
+  os << acct.address;
   return os;
 }
 
@@ -567,10 +573,10 @@ msgpack::packer<Stream>& Transaction::pack(msgpack::packer<Stream>& o) const {
   kv_pack(o, "selkey", selection_pk);
   kv_pack(o, "snd", sender);
   kv_pack(o, "type", tx_type);
-  kv_pack(o, "votefst", vote_pk);
-  kv_pack(o, "votekd", vote_pk);
+  kv_pack(o, "votefst", vote_first);
+  kv_pack(o, "votekd", vote_key_dilution);
   kv_pack(o, "votekey", vote_pk);
-  kv_pack(o, "votelst", vote_pk);
+  kv_pack(o, "votelst", vote_last);
   kv_pack(o, "xaid", xfer_asset);
 
   kv_pack(o, "apid", application_id);
@@ -597,4 +603,52 @@ bytes Transaction::encode() const {
   std::string const& s = buffer.str();
   bytes data{s.begin(), s.end()};
   return data;
+}
+
+std::ostream&
+operator<<(std::ostream& os, const Transaction& txn) {
+  os << "{" << std::endl;
+  os << "  aamt: " << txn.asset_amount << std::endl;
+  os << "  aclose: " << txn.asset_close_to << std::endl;
+  os << "  afrz: " << txn.asset_frozen << std::endl;
+  os << "  amt: " << txn.amount << std::endl;
+  //  os << "  apar: " << txn.asset_params << std::endl;
+  os << "  arcv: " << txn.asset_receiver << std::endl;
+  os << "  asnd: " << txn.asset_sender << std::endl;
+  os << "  caid: " << txn.config_asset << std::endl;
+  os << "  close: " << txn.close_to << std::endl;
+  os << "  fadd: " << txn.freeze_account << std::endl;
+  os << "  faid: " << txn.freeze_asset << std::endl;
+  os << "  fee: " << txn.fee << std::endl;
+  os << "  fv: " << txn.first_valid << std::endl;
+  os << "  gen: " << txn.genesis_id << std::endl;
+  os << "  gh: " << b64_encode(txn.genesis_hash) << std::endl;
+  os << "  grp: " << b64_encode(txn.group) << std::endl;
+  os << "  lv: " << txn.last_valid << std::endl;
+  os << "  lx: " << b64_encode(txn.lease) << std::endl;
+  os << "  nonpart: " << txn.nonparticipation << std::endl;
+  os << "  note: " << b64_encode(txn.note) << std::endl;
+  os << "  rcv: " << txn.receiver << std::endl;
+  os << "  rekey: " << txn.rekey_to << std::endl;
+  os << "  selkey: " << b64_encode(txn.selection_pk) << std::endl;
+  os << "  snd: " << txn.sender << std::endl;
+  os << "  type: " << txn.tx_type << std::endl;
+  os << "  votefst: " << txn.vote_first << std::endl;
+  os << "  votekd: " << txn.vote_key_dilution << std::endl;
+  os << "  votekey: " << b64_encode(txn.vote_pk) << std::endl;
+  os << "  votelst: " << txn.vote_last << std::endl;
+  os << "  xaid: " << txn.xfer_asset << std::endl;
+
+  os << "  apid: " << txn.application_id << std::endl;
+  os << "  apan: " << txn.on_complete << std::endl;
+  //  os << "  apat: " << txn.accounts << std::endl;
+  os << "  apap: " << b64_encode(txn.approval_program) << std::endl;
+  os << "  apsu: " << b64_encode(txn.clear_state_program) << std::endl;
+  //  os << "  apaa: " << txn.app_arguments << std::endl;
+  //  os << "  apfa: " << txn.foreign_apps << std::endl;
+  //  os << "  apas: " << txn.foreign_assets << std::endl;
+  //  os << "  apgs: " << txn.globals << std::endl;
+  //  os << "  apls: " << txn.locals << std::endl;
+  os << "}" << std::endl;
+  return os;
 }

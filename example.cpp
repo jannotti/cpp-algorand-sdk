@@ -57,7 +57,7 @@ void algod_basics() {
     assert(!strcmp(resp["result"].GetString(), "AiABASI="));
   }
 
-  resp = client.transaction_params();
+  resp = client.params();
   assert(resp.status == 200);
   assert(resp["min-fee"].GetUint64() == 1000);
 
@@ -143,7 +143,7 @@ bool frozen(std::string addr, std::string asa) {
 
 void end_to_end() {
   AlgodClient client;
-  auto resp = client.transaction_params();
+  auto resp = client.params();
   assert(resp.status == 200);
   const auto& suggested = *resp.json;
   std::cout << suggested << std::endl;
@@ -404,7 +404,7 @@ int main(int argc, char** argv) {
 
     if (cmd == "pay") {
       AlgodClient client;
-      auto resp = client.transaction_params();
+      auto resp = client.params();
       assert(resp.status == 200);
       const auto& suggested = *resp.json;
 
@@ -435,7 +435,7 @@ int main(int argc, char** argv) {
         msgpack::pack(buffer, stxn);
         std::ofstream ofs("pay.stxn");
         ofs << buffer.str();
-        resp = client.transaction_submit(buffer.str());
+        resp = client.submit(buffer.str());
         assert(resp.status == 200);
         std::cout << resp << std::endl;
       }
