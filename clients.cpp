@@ -55,7 +55,11 @@ require_env(std::string name) {
 }
 
 AlgodClient::AlgodClient() :
-  RestClient(require_env("ALGOD_ADDRESS"), "X-Algo-API-Token: "+std::string(require_env("ALGOD_TOKEN"))) {
+  AlgodClient(require_env("ALGOD_ADDRESS"), require_env("ALGOD_TOKEN")) {
+}
+
+AlgodClient::AlgodClient(std::string address, std::string token) :
+  RestClient(address, "X-Algo-API-Token: "+token) {
 }
 
 bool
@@ -324,8 +328,11 @@ JsonResponse RestClient::post(const std::string& route, const std::string& body)
 }
 
 IndexerClient::IndexerClient() :
-  RestClient(require_env("INDEXER_ADDRESS"),
-             "X-Indexer-API-Token: " + std::string(require_env("INDEXER_TOKEN"))) {
+  IndexerClient(require_env("INDEXER_ADDRESS"), require_env("INDEXER_TOKEN")) {
+}
+
+IndexerClient::IndexerClient(std::string address, std::string token) :
+  RestClient(address, "X-Indexer-API-Token: " + token) {
 }
 
 JsonResponse

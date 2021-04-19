@@ -461,6 +461,11 @@ public:
    */
   AlgodClient();
 
+  /**
+   * @brief Initialize the client with passed address for algod and API token.
+   */
+  AlgodClient(std::string address, std::string token);
+
   JsonResponse genesis(void);
   bool healthy(void);
   std::string metrics(void);
@@ -506,6 +511,11 @@ public:
    * from environment.
    */
   IndexerClient();
+  /**
+   * @brief Initialize the client with passed address for indexer and API token.
+   */
+  IndexerClient(std::string address, std::string token);
+
   bool healthy(void);
   JsonResponse accounts(uint64_t limit=20, std::string next_page="",
                         uint64_t held_asset=0, uint64_t min_bal=0, uint64_t max_bal=0,
