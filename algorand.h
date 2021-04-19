@@ -145,10 +145,16 @@ public:
 
   /* Create a new Multisig with the extra signature of Account */
   MultiSig sign(Account) const;
+  bytes getAddress(void) const;
+  std::string getAddressString(void) const;
 
+  //TODO: These should all be private. No need to break encapsulation
   std::vector<Subsig> sigs;
+  Address address;
   uint64_t threshold;
   uint64_t version = 1;
+  private:
+  void updateAddress(void);
 };
 
 /* We use a single transaction class to represent all transaction

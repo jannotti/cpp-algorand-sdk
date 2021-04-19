@@ -232,10 +232,13 @@ msgpack::packer<Stream>& Subsig::pack(msgpack::packer<Stream>& o) const {
 }
 
 MultiSig::MultiSig(std::vector<Address> addrs, uint64_t threshold) :
-  threshold(threshold ? threshold : addrs.size()) {
+  sigs{},
+  address{},
+  threshold{threshold ? threshold : addrs.size()} {
   for (const auto& addr : addrs) {
     sigs.push_back(Subsig(addr.public_key));
   }
+  this->updateAddress();
 }
 
 template <typename Stream>
@@ -246,6 +249,50 @@ msgpack::packer<Stream>& MultiSig::pack(msgpack::packer<Stream>& o) const {
   kv_pack(o, "v", version);
   return o;
 }
+
+//Update MultiSig Public Address
+//TODO: Refactor
+void MultiSig::updateAddress(void)
+{
+   bytes msigBytes{};
+   const std::string msig_header = "MultisigAddr";
+
+   for(const auto& character: msig_header)
+   {
+       msigBytes.push_back(character);
+   }
+  
+   for(int i=sizeof(this->version)-8; i > 8; i-=8)
+   {
+        auto byte = (this->version>>i)&0xFF;
+        if (0 != byte)
+        {
+            msigBytes.push_back(byte);
+        }
+   }
+   msigBytes.push_back(this->version&0xFF);
+
+   for(int i=sizeof(this->threshold)-8; i > 8; i-=8)
+   {
+        auto byte = (this->threshold>>i)&0xFF;
+        if (0 != byte)
+        {
+            msigBytes.push_back(byte);
+        }
+   }
+   msigBytes.push_back(this->threshold&0xFF);
+
+   for(const auto& sig: sigs)
+   {
+       for(const auto& byte: sig.public_key)
+       {
+           msigBytes.push_back(byte);
+       }
+   }
+
+   this->address = Address{sha512_256(msigBytes)};
+}
+
 
 SignedTransaction::SignedTransaction(const Transaction& txn, bytes signature) :
   sig(signature), txn(txn) { }
