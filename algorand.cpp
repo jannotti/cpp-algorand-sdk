@@ -233,13 +233,14 @@ msgpack::packer<Stream>& Subsig::pack(msgpack::packer<Stream>& o) const {
 
 MultiSig::MultiSig(std::vector<Address> addrs, uint64_t threshold) :
   sigs{},
-  address{},
-  threshold{threshold ? threshold : addrs.size()} {
+  threshold{threshold ? threshold : addrs.size()},
+  public_address{} {
   for (const auto& addr : addrs) {
     sigs.push_back(Subsig(addr.public_key));
   }
-  this->updateAddress();
+  this->update_address();
 }
+
 
 template <typename Stream>
 msgpack::packer<Stream>& MultiSig::pack(msgpack::packer<Stream>& o) const {
@@ -250,47 +251,75 @@ msgpack::packer<Stream>& MultiSig::pack(msgpack::packer<Stream>& o) const {
   return o;
 }
 
-//Update MultiSig Public Address
-//TODO: Refactor
-void MultiSig::updateAddress(void)
+
+MultiSig MultiSig::sign(const std::vector<Account>& accounts) const
+{ 
+  MultiSig msig{};
+  msig.threshold = accounts.size();
+
+  for(const auto& account : accounts)
+  {
+      const auto pk = account.public_key();
+      bytes signature{account.secret_key.begin(), account.secret_key.end()};
+      signature.insert(signature.end(), pk.begin(), pk.end());
+      msig.sigs.push_back(Subsig{pk, signature});
+  }
+
+  return msig;
+}
+
+
+bool MultiSig::sign(const Account& account)
 {
-   bytes msigBytes{};
-   const std::string msig_header = "MultisigAddr";
+    //const auto pk = account.public_key();
+    //bytes signature{account.secret_key.begin(), account.secret_key.end()};
+    //signature.insert(signature.end(), pk.begin(), pk.end());
+    return this->sign(account.secret_key);
+}
 
-   for(const auto& character: msig_header)
+bool MultiSig::sign(bytes signature)
+{
+   if (signature.size() < 64)
    {
-       msigBytes.push_back(character);
+       return false;
    }
-  
-   for(int i=sizeof(this->version)-8; i > 8; i-=8)
-   {
-        auto byte = (this->version>>i)&0xFF;
-        if (0 != byte)
-        {
-            msigBytes.push_back(byte);
-        }
-   }
-   msigBytes.push_back(this->version&0xFF);
+   bool success = false;
+   const bytes pk{signature.begin()+32, signature.end()};
 
-   for(int i=sizeof(this->threshold)-8; i > 8; i-=8)
+   for (auto& sig: sigs)
    {
-        auto byte = (this->threshold>>i)&0xFF;
-        if (0 != byte)
-        {
-            msigBytes.push_back(byte);
-        }
-   }
-   msigBytes.push_back(this->threshold&0xFF);
-
-   for(const auto& sig: sigs)
-   {
-       for(const auto& byte: sig.public_key)
+       if (pk == sig.public_key)
        {
-           msigBytes.push_back(byte);
+           sig.signature = signature;
+           success = true;
        }
    }
+   return success;;
+}
 
-   this->address = Address{sha512_256(msigBytes)};
+bytes MultiSig::address(void) const
+{
+   return this->public_address.public_key;
+}
+
+
+//Update MultiSig Public Address
+void MultiSig::update_address(void)
+{
+   const std::string msig_header = "MultisigAddr";
+   auto version_bytes = number_to_bytes(this->version);
+   auto threshold_bytes = number_to_bytes(this->threshold);
+   bytes msig_bytes{msig_header.begin(), msig_header.end()};
+ 
+   msig_bytes.insert(msig_bytes.end(), version_bytes.begin(), version_bytes.end());
+   msig_bytes.insert(msig_bytes.end(), threshold_bytes.begin(), threshold_bytes.end());
+
+   for(const auto& sig: this->sigs)
+   {
+       msig_bytes.insert(msig_bytes.end(), sig.public_key.begin(), sig.public_key.end());
+   }
+
+   this->public_address = Address{sha512_256(msig_bytes)};
 }
 
 

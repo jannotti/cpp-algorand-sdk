@@ -144,17 +144,21 @@ public:
   msgpack::packer<Stream>& pack(msgpack::packer<Stream>& o) const;
 
   /* Create a new Multisig with the extra signature of Account */
-  MultiSig sign(Account) const;
-  bytes getAddress(void) const;
-  std::string getAddressString(void) const;
+  MultiSig sign(const std::vector<Account>&) const;
 
-  //TODO: These should all be private. No need to break encapsulation
+  //TODO: Python SDK throws an exception if 
+  //there is no public key match for signature
+  //I think it's better to return a boolean 
+  //but I'm open to suggestions
+  bool sign(const Account&);
+  bool sign(bytes signature);
+  bytes address(void) const;
+  
   std::vector<Subsig> sigs;
-  Address address;
   uint64_t threshold;
   uint64_t version = 1;
-  private:
-  void updateAddress(void);
+  Address public_address;
+  void update_address(void);
 };
 
 /* We use a single transaction class to represent all transaction
