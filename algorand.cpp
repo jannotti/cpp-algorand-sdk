@@ -391,7 +391,7 @@ Transaction Transaction::asset_transfer(Address sender,
                                         uint64_t first_valid, uint64_t last_valid,
                                         std::string genesis_id, bytes genesis_hash,
                                         bytes lease, bytes note, Address rekey_to) {
-  Transaction t = Transaction(sender, "axfr");
+  Transaction t = Transaction(sender, "axfer");
 
   t.xfer_asset = asset_id;
   t.asset_amount = asset_amount;
