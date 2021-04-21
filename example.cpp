@@ -375,6 +375,25 @@ void indexer_basics() {
   std::cout << "indexer pass" << std::endl;
 }
 
+void sign_send_save(std::string name, const Transaction& txn, const Account& signer, const AlgodClient& client) {
+  {
+  std::stringstream buffer;
+  msgpack::pack(buffer, txn);
+  std::ofstream ofs(name+".txn");
+  ofs << buffer.str();
+  }
+
+  SignedTransaction stxn = txn.sign(signer);
+
+  std::stringstream sbuffer;
+  msgpack::pack(sbuffer, stxn);
+  std::ofstream sofs(name+".stxn");
+  sofs << sbuffer.str();
+  auto resp = client.submit(sbuffer.str());
+  std::cout << resp << std::endl;
+  assert(resp.status == 200);
+}
+
 int main(int argc, char** argv) {
   if (argc > 2) {
     auto cmd = std::string(argv[1]);
@@ -421,26 +440,39 @@ int main(int argc, char** argv) {
                              b64_decode(suggested["genesis-hash"].GetString()),
                              {}, {}, {});
 
-      {
-        std::stringstream buffer;
-        msgpack::pack(buffer, pay);
-        std::ofstream ofs("pay.txn");
-        ofs << buffer.str();
-      }
 
-      SignedTransaction stxn = pay.sign(snd);
-
-      {
-        std::stringstream buffer;
-        msgpack::pack(buffer, stxn);
-        std::ofstream ofs("pay.stxn");
-        ofs << buffer.str();
-        resp = client.submit(buffer.str());
-        assert(resp.status == 200);
-        std::cout << resp << std::endl;
-      }
-
+      sign_send_save("pay", pay, snd, client);
     }
+
+    if (cmd == "call") {
+      AlgodClient client;
+      auto resp = client.params();
+      assert(resp.status == 200);
+      const auto& suggested = *resp.json;
+
+      Account snd = Account::from_mnemonic(argv[2]);
+      uint64_t app = std::stol(argv[3]);
+      Transaction call =
+        Transaction::app_call(snd.public_key(),
+                              app,
+                              0,      // on complete
+                              {},     // accounts
+                              {}, {}, // approval, clear
+                              {},     // arguments
+                              {},     // apps
+                              {},     // assets
+                              {}, {}, // globals locals
+                              suggested["min-fee"].GetUint64(),
+                              suggested["last-round"].GetUint64()+1,
+                              suggested["last-round"].GetUint64()+1001,
+                              suggested["genesis-id"].GetString(),
+                              b64_decode(suggested["genesis-hash"].GetString()),
+                              {}, {}, {});
+
+
+      sign_send_save("call", call, snd, client);
+    }
+
   } else {
     base();
     address();

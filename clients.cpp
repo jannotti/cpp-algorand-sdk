@@ -86,7 +86,7 @@ AlgodClient::metrics(void) {
 }
 
 std::string
-AlgodClient::account_url(std::string address) {
+AlgodClient::account_url(std::string address) const {
   return "/v2/accounts/" + address + "?format=json";
 }
 
@@ -110,7 +110,7 @@ AlgodClient::application(std::string id) {
 }
 
 std::string
-AlgodClient::asset_url(std::string id) {
+AlgodClient::asset_url(std::string id) const {
   return "/v2/assets/" + id;
 }
 
@@ -170,24 +170,24 @@ AlgodClient::teal_dryrun(rapidjson::Value& request) {
 }
 
 std::string
-AlgodClient::submit_url() {
+AlgodClient::submit_url() const {
   return "/v2/transactions";
 }
 
 JsonResponse
-AlgodClient::submit(std::string rawtxn) {
+AlgodClient::submit(std::string rawtxn) const {
   return post(submit_url(), rawtxn);
 }
 
 JsonResponse
-AlgodClient::submit(const SignedTransaction& stxn) {
+AlgodClient::submit(const SignedTransaction& stxn) const {
   std::stringstream buffer;
   msgpack::pack(buffer, stxn);
   return submit(buffer.str());
 }
 
 JsonResponse
-AlgodClient::submit(std::vector <SignedTransaction> txgroup) {
+AlgodClient::submit(std::vector <SignedTransaction> txgroup) const {
   std::stringstream buffer;
   for (auto& txn : txgroup)
     msgpack::pack(buffer, txn);
@@ -195,7 +195,7 @@ AlgodClient::submit(std::vector <SignedTransaction> txgroup) {
 }
 
 std::string
-AlgodClient::params_url() {
+AlgodClient::params_url() const {
   return "/v2/transactions/params";
 }
 
@@ -308,7 +308,7 @@ json_parse(std::string body) {
 JsonResponse
 RestClient::api(const std::string& route,
                 const std::string& method,
-                const std::string& request_body) {
+                const std::string& request_body) const {
   std::string response_body;
   int status = curl_request(prefix + route, method,
                             {"Accept: application/json",
@@ -319,11 +319,11 @@ RestClient::api(const std::string& route,
   return JsonResponse{status, json_parse(response_body)};
 }
 
-JsonResponse RestClient::get(const std::string& route) {
+JsonResponse RestClient::get(const std::string& route) const {
   return api(route, "GET", "");
 }
 
-JsonResponse RestClient::post(const std::string& route, const std::string& body) {
+JsonResponse RestClient::post(const std::string& route, const std::string& body) const {
   return api(route, "POST", body);
 }
 

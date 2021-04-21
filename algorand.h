@@ -431,14 +431,14 @@ public:
    */
   JsonResponse api(const std::string& route,
                    const std::string& method,
-                   const std::string& request_body = "");
+                   const std::string& request_body = "") const;
 
   /**
    * @brief Return the requested information from the API using a GET
    * @param route API route.
    * @return string containing the requested information.
    */
-  JsonResponse get(const std::string& route);
+  JsonResponse get(const std::string& route) const;
 
   /**
    * @brief Return the requested information from the API using a POST
@@ -446,7 +446,7 @@ public:
    * @param body Raw bytes to send as body. "" means no body.
    * @return string containing the requested information.
    */
-  JsonResponse post(const std::string& route, const std::string& body = "");
+  JsonResponse post(const std::string& route, const std::string& body = "") const;
 
 protected:
   std::string prefix;
@@ -470,7 +470,7 @@ public:
   bool healthy(void);
   std::string metrics(void);
 
-  virtual std::string account_url(std::string address);
+  virtual std::string account_url(std::string address) const;
   JsonResponse account(std::string address);
   JsonResponse account(const Address& addr) { return account(addr.as_string); }
   JsonResponse account(const Account& acct) { return account(acct.address); }
@@ -479,7 +479,7 @@ public:
   JsonResponse application(std::string id);
   JsonResponse application(uint64_t id) { return asset(std::to_string(id)); }
 
-  virtual std::string asset_url(std::string id);
+  virtual std::string asset_url(std::string id) const;
   JsonResponse asset(std::string id);
   JsonResponse asset(uint64_t id) { return asset(std::to_string(id)); }
 
@@ -494,13 +494,13 @@ public:
   JsonResponse teal_compile(std::string source);
   JsonResponse teal_dryrun(rapidjson::Value& request);
 
-  virtual std::string submit_url();
-  JsonResponse submit(std::string raw);
-  JsonResponse submit(const SignedTransaction& stxn);
-  JsonResponse submit(const std::vector<SignedTransaction> stxn);
+  virtual std::string submit_url() const;
+  JsonResponse submit(std::string raw) const;
+  JsonResponse submit(const SignedTransaction& stxn) const;
+  JsonResponse submit(const std::vector<SignedTransaction> stxn) const;
   JsonResponse transaction_pending(std::string txid = "");
 
-  virtual std::string params_url();
+  virtual std::string params_url() const;
   JsonResponse params();
 };
 

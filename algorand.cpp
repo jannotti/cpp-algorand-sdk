@@ -504,10 +504,12 @@ int Transaction::key_count() const {
   keys += is_present(note);
   keys += is_present(rekey_to);
 
+  // PaymentTxnFields
   keys += is_present(receiver);
   keys += is_present(amount);
   keys += is_present(close_to);
 
+  // KeyregTxnFields
   keys += is_present(vote_pk);
   keys += is_present(selection_pk);
   keys += is_present(vote_first);
@@ -515,18 +517,33 @@ int Transaction::key_count() const {
   keys += is_present(vote_key_dilution);
   keys += is_present(nonparticipation);
 
+  // AssetConfigTxnFields
   keys += is_present(config_asset);
   keys += is_present(asset_params);
 
+  // AssetTransferTxnFields
   keys += is_present(xfer_asset);
   keys += is_present(asset_amount);
   keys += is_present(asset_sender);
   keys += is_present(asset_receiver);
   keys += is_present(asset_close_to);
 
+  // AssetFreezeTxnFields
   keys += is_present(freeze_account);
   keys += is_present(freeze_asset);
   keys += is_present(asset_frozen);
+
+  // ApplicationCallTxnFields
+  keys += is_present(application_id);
+  keys += is_present(on_complete);
+  keys += is_present(accounts);
+  keys += is_present(approval_program);
+  keys += is_present(clear_state_program);
+  keys += is_present(app_arguments);
+  keys += is_present(foreign_apps);
+  keys += is_present(foreign_assets);
+  keys += is_present(globals);
+  keys += is_present(locals);
 
   return keys;
 }
@@ -552,7 +569,17 @@ msgpack::packer<Stream>& Transaction::pack(msgpack::packer<Stream>& o) const {
   kv_pack(o, "aclose", asset_close_to);
   kv_pack(o, "afrz", asset_frozen);
   kv_pack(o, "amt", amount);
+  kv_pack(o, "apaa", app_arguments);
+  kv_pack(o, "apan", on_complete);
+  kv_pack(o, "apap", approval_program);
   kv_pack(o, "apar", asset_params);
+  kv_pack(o, "apas", foreign_assets);
+  kv_pack(o, "apat", accounts);
+  kv_pack(o, "apfa", foreign_apps);
+  kv_pack(o, "apgs", globals);
+  kv_pack(o, "apid", application_id);
+  kv_pack(o, "apls", locals);
+  kv_pack(o, "apsu", clear_state_program);
   kv_pack(o, "arcv", asset_receiver);
   kv_pack(o, "asnd", asset_sender);
   kv_pack(o, "caid", config_asset);
@@ -578,17 +605,6 @@ msgpack::packer<Stream>& Transaction::pack(msgpack::packer<Stream>& o) const {
   kv_pack(o, "votekey", vote_pk);
   kv_pack(o, "votelst", vote_last);
   kv_pack(o, "xaid", xfer_asset);
-
-  kv_pack(o, "apid", application_id);
-  kv_pack(o, "apan", on_complete);
-  kv_pack(o, "apat", accounts);
-  kv_pack(o, "apap", approval_program);
-  kv_pack(o, "apsu", clear_state_program);
-  kv_pack(o, "apaa", app_arguments);
-  kv_pack(o, "apfa", foreign_apps);
-  kv_pack(o, "apas", foreign_assets);
-  kv_pack(o, "apgs", globals);
-  kv_pack(o, "apls", locals);
 
 
   return o;
