@@ -396,27 +396,30 @@ void sign_send_save(std::string name, const Transaction& txn, const Account& sig
 
 int main(int argc, char** argv) {
   if (argc > 2) {
-    auto cmd = std::string(argv[1]);
+    int arg = 1;
+    auto cmd = std::string(argv[arg++]);
     if (cmd == "account") {
-      account(argv[2]);
+      account(argv[arg++]);
     }
     if (cmd == "asset" || cmd == "asa") {
-      asset(argv[2]);
+      asset(argv[arg++]);
     }
     if (cmd == "app" || cmd == "application") {
-      application(argv[2]);
+      application(argv[arg++]);
     }
     if (cmd == "opted-in") {
       assert(argc == 4);
-      std::cout << opted_in(argv[2], argv[3]) << std::endl;
+      std::cout << opted_in(argv[arg], argv[arg+1]) << std::endl;
+      arg += 2;
     }
     if (cmd == "asset-balance") {
       assert(argc == 4);
-      std::unique_ptr<Holding> h = holding(argv[2], argv[3]);
+      std::unique_ptr<Holding> h = holding(argv[arg], argv[arg+1]);
+      arg += 2;
       std::cout << h->amount << std::endl;
     }
     if (cmd == "mnemonic") {
-      Account acct = Account::from_mnemonic(argv[2]);
+      Account acct = Account::from_mnemonic(argv[arg++]);
       std::cout << acct.address << std::endl;
       account(acct.address.as_string);
     }
@@ -427,9 +430,9 @@ int main(int argc, char** argv) {
       assert(resp.status == 200);
       const auto& suggested = *resp.json;
 
-      Account snd = Account::from_mnemonic(argv[2]);
-      Account rcv = Account(argv[3]);
-      uint64_t amt = std::stol(argv[4]);
+      Account snd = Account::from_mnemonic(argv[arg++]);
+      Account rcv = Account(argv[arg++]);
+      uint64_t amt = std::stol(argv[arg++]);
       Transaction pay =
         Transaction::payment(snd.public_key(), rcv.public_key(),
                              amt, {},
@@ -440,8 +443,36 @@ int main(int argc, char** argv) {
                              b64_decode(suggested["genesis-hash"].GetString()),
                              {}, {}, {});
 
-
       sign_send_save("pay", pay, snd, client);
+    }
+
+    if (cmd == "axfer") {
+      AlgodClient client;
+      auto resp = client.params();
+      assert(resp.status == 200);
+      const auto& suggested = *resp.json;
+
+      Account snd = Account::from_mnemonic(argv[arg++]);
+      Account rcv = Account(argv[arg++]);
+      uint64_t asset_id = std::stol(argv[arg++]);
+      uint64_t asset_amount = std::stol(argv[arg++]);
+      Transaction axfer =
+        Transaction::asset_transfer(snd.public_key(),
+
+                                    asset_id,
+                                    asset_amount,
+                                    {}, // asset_sender
+                                    rcv.public_key(),
+                                    {}, // asset_close_to,
+
+                                    suggested["min-fee"].GetUint64(),
+                                    suggested["last-round"].GetUint64()+1,
+                                    suggested["last-round"].GetUint64()+1001,
+                                    suggested["genesis-id"].GetString(),
+                                    b64_decode(suggested["genesis-hash"].GetString()),
+                                    {}, {}, {});
+
+      sign_send_save("axfer", axfer, snd, client);
     }
 
     if (cmd == "call") {
@@ -450,8 +481,8 @@ int main(int argc, char** argv) {
       assert(resp.status == 200);
       const auto& suggested = *resp.json;
 
-      Account snd = Account::from_mnemonic(argv[2]);
-      uint64_t app = std::stol(argv[3]);
+      Account snd = Account::from_mnemonic(argv[arg++]);
+      uint64_t app = std::stol(argv[arg++]);
       Transaction call =
         Transaction::app_call(snd.public_key(),
                               app,
@@ -468,7 +499,6 @@ int main(int argc, char** argv) {
                               suggested["genesis-id"].GetString(),
                               b64_decode(suggested["genesis-hash"].GetString()),
                               {}, {}, {});
-
 
       sign_send_save("call", call, snd, client);
     }
