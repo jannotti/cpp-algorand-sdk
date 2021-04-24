@@ -187,6 +187,9 @@ bool is_present(StateSchema schema) {
 bool is_present(Transaction) {
   return true;
 };
+bool is_present(Subsig) {
+  return true;
+};
 
 template <typename E>
 bool is_present(std::vector<E> list) {
@@ -194,8 +197,6 @@ bool is_present(std::vector<E> list) {
     if (is_present(e)) return true;
   return false;
 }
-
-
 
 template <typename Stream, typename V>
 int kv_pack(msgpack::packer<Stream>& o, const char* key, V value) {
@@ -220,9 +221,17 @@ msgpack::packer<Stream>& LogicSig::pack(msgpack::packer<Stream>& o) const {
   return o;
 }
 
-Subsig::Subsig(bytes public_key, bytes signature)
-  : public_key(public_key), signature(signature) { }
+Subsig::Subsig(bytes public_key, bytes secret_key)
+  : public_key(public_key), secret_key(secret_key), signature{} { }
 
+
+void Subsig::update_secret_key(bytes secret_key) {
+  this->secret_key = secret_key;
+}
+
+bytes Subsig::get_secret_key(void) const {
+ return this->secret_key;
+}
 template <typename Stream>
 msgpack::packer<Stream>& Subsig::pack(msgpack::packer<Stream>& o) const {
   o.pack_map(1 + is_present(signature));
@@ -232,69 +241,66 @@ msgpack::packer<Stream>& Subsig::pack(msgpack::packer<Stream>& o) const {
 }
 
 MultiSig::MultiSig(std::vector<Address> addrs, uint64_t threshold) :
-  sigs{},
+  sigs{},     
   threshold{threshold ? threshold : addrs.size()},
   public_address{} {
   for (const auto& addr : addrs) {
-    sigs.push_back(Subsig(addr.public_key));
+     sigs.push_back(Subsig(addr.public_key));
   }
   this->update_address();
 }
 
-
+//Note: msig address is part of the transaction and gets packed
+//as part of the transaction
 template <typename Stream>
 msgpack::packer<Stream>& MultiSig::pack(msgpack::packer<Stream>& o) const {
   o.pack_map(3);
-  o.pack("subsigs"); o.pack(sigs);
+  o.pack("subsig");
+  o.pack_array(sigs.size());
+  for(auto& sig : sigs)  {
+      o.pack_map(1 + is_present(sig.signature));
+      kv_pack(o, "pk", sig.public_key);
+      kv_pack(o, "s", sig.signature);
+  }
   kv_pack(o, "thr", threshold);
   kv_pack(o, "v", version);
   return o;
 }
-
 
 MultiSig MultiSig::sign(const std::vector<Account>& accounts) const
 { 
   MultiSig msig{};
   msig.threshold = accounts.size();
 
-  for(const auto& account : accounts)
-  {
-      const auto pk = account.public_key();
-      bytes signature{account.secret_key.begin(), account.secret_key.end()};
-      signature.insert(signature.end(), pk.begin(), pk.end());
-      msig.sigs.push_back(Subsig{pk, signature});
+  for (const auto& account : accounts) {
+      msig.sigs.push_back(Subsig{account.public_key(), account.secret_key});
   }
 
   return msig;
 }
 
 
-bool MultiSig::sign(const Account& account)
-{
-    //const auto pk = account.public_key();
-    //bytes signature{account.secret_key.begin(), account.secret_key.end()};
-    //signature.insert(signature.end(), pk.begin(), pk.end());
+bool MultiSig::sign(const Account& account) {
     return this->sign(account.secret_key);
 }
 
-bool MultiSig::sign(bytes signature)
+bool MultiSig::sign(bytes secret_key)
 {
-   if (signature.size() < 64)
-   {
+   if (secret_key.size() < 64){
        return false;
    }
-   bool success = false;
-   const bytes pk{signature.begin()+32, signature.end()};
 
-   for (auto& sig: sigs)
-   {
-       if (pk == sig.public_key)
-       {
-           sig.signature = signature;
+   bool success = false;
+
+   const bytes pk{secret_key.begin()+32, secret_key.end()};
+
+   for (auto& sig: sigs){
+       if (pk == sig.public_key){
+           sig.update_secret_key(secret_key);
            success = true;
        }
    }
-   return success;;
+   return success;
 }
 
 bytes MultiSig::address(void) const
@@ -563,6 +569,15 @@ SignedTransaction Transaction::sign(Account acct) const {
 
 SignedTransaction Transaction::sign(LogicSig logic) const {
   return SignedTransaction{*this, logic};
+}
+
+SignedTransaction Transaction::sign(MultiSig msig) const {
+  for (auto& sig : msig.sigs) {
+      if (is_present(sig.get_secret_key())) {
+          sig.signature = Account{sig.public_key, sig.get_secret_key()}.sign("TX", encode());
+      }
+  }
+  return SignedTransaction{*this, msig};
 }
 
 int Transaction::key_count() const {

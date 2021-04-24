@@ -127,13 +127,18 @@ public:
 
 class Subsig {
 public:
-  Subsig(bytes public_key, bytes signature={});
+  Subsig(bytes public_key, bytes secret_key={});
 
+  void update_secret_key(bytes secret_key);
+  bytes get_secret_key(void) const;
   template <typename Stream>
   msgpack::packer<Stream>& pack(msgpack::packer<Stream>& o) const;
 
   bytes public_key;
   bytes signature;
+
+private:
+  bytes secret_key;
 };
 
 class MultiSig {
@@ -151,12 +156,14 @@ public:
   //I think it's better to return a boolean 
   //but I'm open to suggestions
   bool sign(const Account&);
-  bool sign(bytes signature);
+  bool sign(bytes secret_key);
   bytes address(void) const;
   
   std::vector<Subsig> sigs;
   uint64_t threshold;
   uint64_t version = 1;
+
+private:
   Address public_address;
   void update_address(void);
 };
@@ -253,7 +260,7 @@ public:
 
   SignedTransaction sign(Account) const;
   SignedTransaction sign(LogicSig) const;
-
+  SignedTransaction sign(MultiSig) const;
   // Field names and sections are taken from:
   //  https://developer.algorand.org/docs/reference/transactions/
   // Header
