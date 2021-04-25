@@ -187,8 +187,8 @@ bool is_present(StateSchema schema) {
 bool is_present(Transaction) {
   return true;
 };
-bool is_present(Subsig) {
-  return true;
+bool is_present(Subsig subsig) {
+  return is_present(subsig.public_key);
 };
 
 template <typename E>
@@ -256,12 +256,7 @@ template <typename Stream>
 msgpack::packer<Stream>& MultiSig::pack(msgpack::packer<Stream>& o) const {
   o.pack_map(3);
   o.pack("subsig");
-  o.pack_array(sigs.size());
-  for(auto& sig : sigs)  {
-      o.pack_map(1 + is_present(sig.signature));
-      kv_pack(o, "pk", sig.public_key);
-      kv_pack(o, "s", sig.signature);
-  }
+  o.pack(sigs);
   kv_pack(o, "thr", threshold);
   kv_pack(o, "v", version);
   return o;
