@@ -17,10 +17,6 @@ CCFLAGS += -std=c++14 -g
 .cpp.o:
 	$(CC)  $(CCFLAGS) $(IFLAGS) -c $<
 
-#TODO: Comebine this back into example
-msig: $(subst .cpp,.o,$(SOURCE)) msig.o
-	$(CC) $(CCFLAGS) $(LFLAGS) $^ $(LIBS) -o $@
-
 example: $(subst .cpp,.o,$(SOURCE)) example.o
 	$(CC) $(CCFLAGS) $(LFLAGS) $^ $(LIBS) -o $@
 

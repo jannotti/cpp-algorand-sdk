@@ -8,6 +8,9 @@
 #include "base.h"
 #include "mnemonic.h"
 
+std::string gNodeAddr = "localhost:17701";
+std::string gNodeToken = "07d3057d7020750f451533a094251c72a9c770ea5d3fd799766028450fd48d17";
+
 void debug(std::string str, std::string file) {
     std::ofstream out(file);
     out << str;
@@ -363,6 +366,65 @@ void logicsig() {
   std::cout << "logicsig pass" << std::endl;
 }
 
+void multisig() {
+
+  //These mnemonics generate the msig_address below.
+  //Only use this on the testnet
+  auto mnemonic1 = R"(base giraffe believe make tone transfer wrap attend
+                      typical dirt grocery distance outside horn also abstract
+                      slim ecology island alter daring equal boil absent
+                      carpet)";
+
+  auto mnemonic2 = R"(use animal lonely tragic style wealth uniform poverty 
+                      idle sail rice dutch patient sport start shine
+                      stem path client plunge mutual achieve border absent 
+                      aspect)";
+
+
+  const std::string msig_address = "MZVMI5WFABIGZKZEBEWIWEEFQCUE4HVOBUTTYFOYGXGZVZAJNFD6PVQHX4";
+
+  std::vector<Address> addresses; 
+  std::vector<Account> accounts;
+  accounts.push_back(Account::from_mnemonic(mnemonic1));
+  accounts.push_back(Account::from_mnemonic(mnemonic2));
+  addresses.push_back(accounts[0].public_key());
+  addresses.push_back(accounts[1].public_key());
+  MultiSig msig{addresses};
+
+  //Verify Multisig Public Address is expected Address
+  assert(msig_address == msig.address());
+
+  AlgodClient client{gNodeAddr, gNodeToken};
+  auto resp = client.params();
+  assert(resp.status == 200); //Verify we communicate with node before proceeding
+  const auto& suggested = *resp.json;
+
+  //Verify Multisig Txn can be signed and sent to the "to" address
+  Address to{"CX5FN4QNPFBVILSTMBA7URZXQQPP3IZWAQ5OAENHQKIPIYP4CESAQ77PJA"};
+  Transaction t = Transaction::payment(msig.address(),
+                                       to, 12345, {},
+                                       suggested["min-fee"].GetUint64(),
+                                       suggested["last-round"].GetUint64()+1,
+                                       suggested["last-round"].GetUint64()+1001,
+                                       suggested["genesis-id"].GetString(),
+                                       b64_decode(suggested["genesis-hash"].GetString()),
+                                       {}, {}, {});
+
+  //Create signed Multisig Txn using a 
+  //collection of secret_keys
+  auto smsig = t.sign(msig.sign(accounts)); 
+  {
+     std::stringstream buffer;
+     msgpack::pack(buffer, smsig);
+     std::ofstream ofs("pay.stxn");
+     ofs << buffer.str();
+     resp = client.submit(buffer.str());
+     assert(resp.status == 200);
+     //std::cout << resp << std::endl;
+  }
+  std::cout << "multisig pass" << std::endl;
+}
+
 void indexer_basics() {
   IndexerClient client;
   auto resp = client.accounts();
@@ -449,6 +511,7 @@ int main(int argc, char** argv) {
     transaction();
     signing();
     logicsig();
+    multisig();
     algod_basics();
     indexer_basics();
   }
