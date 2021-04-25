@@ -413,15 +413,9 @@ void multisig() {
   //Create signed Multisig Txn using a 
   //collection of secret_keys
   auto smsig = t.sign(msig.sign(accounts)); 
-  {
-     std::stringstream buffer;
-     msgpack::pack(buffer, smsig);
-     std::ofstream ofs("pay.stxn");
-     ofs << buffer.str();
-     resp = client.submit(buffer.str());
-     assert(resp.status == 200);
-     //std::cout << resp << std::endl;
-  }
+  resp = client.submit(smsig);
+  assert(resp.status == 200);
+ 
   std::cout << "multisig pass" << std::endl;
 }
 
