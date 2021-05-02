@@ -32,7 +32,6 @@ transactions, key handling, etc.
  5. Logicsigs, including delegated logisigs.
 
 # TODO
- 1. multisig
- 2. indexer APIs
- 3. kmd APIs
- 4. msgpack responses (currently always uses JSON)
+ 1. indexer APIs
+ 2. kmd APIs
+ 3. msgpack responses (currently always uses JSON)

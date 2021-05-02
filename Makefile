@@ -12,7 +12,7 @@ endif
 LIBS   += -lcurl -lsodium -lcrypto
 
 CC = c++
-CCFLAGS += -std=c++14 -g
+CCFLAGS += -std=c++14 
 
 .cpp.o:
 	$(CC)  $(CCFLAGS) $(IFLAGS) -c $<

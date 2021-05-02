@@ -8,8 +8,6 @@
 #include "base.h"
 #include "mnemonic.h"
 
-std::string gNodeAddr = "localhost:17701";
-std::string gNodeToken = "07d3057d7020750f451533a094251c72a9c770ea5d3fd799766028450fd48d17";
 
 void debug(std::string str, std::string file) {
     std::ofstream out(file);
@@ -394,7 +392,7 @@ void multisig() {
   //Verify Multisig Public Address is expected Address
   assert(msig_address == msig.address());
 
-  AlgodClient client{gNodeAddr, gNodeToken};
+  AlgodClient client{};
   auto resp = client.params();
   assert(resp.status == 200); //Verify we communicate with node before proceeding
   const auto& suggested = *resp.json;
