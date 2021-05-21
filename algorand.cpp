@@ -175,8 +175,26 @@ bool is_present(Address a) {
 bool is_present(LogicSig lsig) {
   return is_present(lsig.logic);
 };
+bool is_present(Subsig subsig) {
+  return is_present(subsig.public_key);
+};
 bool is_present(MultiSig msig) {
-  return msig.threshold > 0;
+  if (msig.threshold == 0) {
+    return false;
+  }
+  else {
+    int thresholdSigs = msig.threshold;
+
+    for (const auto& sig : msig.sigs) {
+      if (false == is_present(sig)) {
+        break;
+      }
+      else if ( true == is_present(sig.signature) ) {
+        --thresholdSigs;
+      }
+    }
+    return (0 == thresholdSigs) && is_present(msig.address());
+  }
 };
 bool is_present(AssetParams ap) {
   return ap.key_count() > 0;
@@ -186,9 +204,6 @@ bool is_present(StateSchema schema) {
 };
 bool is_present(Transaction) {
   return true;
-};
-bool is_present(Subsig subsig) {
-  return is_present(subsig.public_key);
 };
 
 template <typename E>
