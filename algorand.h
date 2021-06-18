@@ -143,7 +143,7 @@ private:
 
 class MultiSig {
 public:
-  MultiSig(std::vector<Address> addrs={}, uint64_t threshold=0);
+  MultiSig(std::vector<Address> addrs={}, uint8_t threshold=0);
 
   template <typename Stream>
   msgpack::packer<Stream>& pack(msgpack::packer<Stream>& o) const;
@@ -160,8 +160,8 @@ public:
   bytes address(void) const;
   
   std::vector<Subsig> sigs;
-  uint64_t threshold;
-  uint64_t version = 1;
+  uint8_t threshold;
+  uint8_t version = 1;
 
 private:
   Address public_address;

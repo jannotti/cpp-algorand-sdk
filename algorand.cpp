@@ -160,6 +160,9 @@ operator<<(std::ostream& os, const Account& acct) {
 bool is_present(bool b) {
   return b;
 }
+bool is_present(uint8_t u) {
+  return u != 0;
+}
 bool is_present(uint64_t u) {
   return u != 0;
 }
@@ -255,9 +258,9 @@ msgpack::packer<Stream>& Subsig::pack(msgpack::packer<Stream>& o) const {
   return o;
 }
 
-MultiSig::MultiSig(std::vector<Address> addrs, uint64_t threshold) :
+MultiSig::MultiSig(std::vector<Address> addrs, uint8_t threshold) :
   sigs{},     
-  threshold{threshold ? threshold : addrs.size()},
+  threshold{threshold ? threshold : static_cast<uint8_t>(addrs.size())},
   public_address{} {
   for (const auto& addr : addrs) {
     sigs.push_back(Subsig(addr.public_key));
@@ -318,8 +321,8 @@ bytes MultiSig::address(void) const {
 //Update MultiSig Public Address
 void MultiSig::update_address(void) {
   const std::string msig_header = "MultisigAddr";
-  auto version_bytes = number_to_bytes(this->version);
-  auto threshold_bytes = number_to_bytes(this->threshold);
+  auto version_bytes = bytes{this->version};//number_to_bytes(this->version);
+  auto threshold_bytes = bytes{this->threshold};//number_to_bytes(this->threshold);
   bytes msig_bytes{msig_header.begin(), msig_header.end()};
  
   msig_bytes.insert(msig_bytes.end(), version_bytes.begin(), version_bytes.end());
