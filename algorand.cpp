@@ -266,10 +266,10 @@ msgpack::packer<Stream>& MultiSig::pack(msgpack::packer<Stream>& o) const {
 
 MultiSig MultiSig::sign(const std::vector<Account>& accounts) const { 
   MultiSig msig{};
-  msig.threshold = accounts.size();
-
+  msig.threshold = this-> threshold; 
+  msig.sigs =  this -> sigs;
   for (const auto& account : accounts) {
-    msig.sigs.push_back(Subsig{account.public_key(), account.secret_key});
+    msig.sign(account.secret_key);
   }
 
   return msig;
@@ -289,9 +289,9 @@ bool MultiSig::sign(bytes secret_key) {
   const bytes pk{secret_key.begin()+32, secret_key.end()};
 
   for (auto& sig: sigs) {
-    if (pk == sig.public_key){
+    if (pk == sig.public_key) {
       sig.update_secret_key(secret_key);
-       success = true;
+      success = true;
     }
   }
 
