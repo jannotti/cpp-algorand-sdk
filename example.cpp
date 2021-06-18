@@ -407,8 +407,6 @@ void multisig() {
   addresses.push_back(accounts[0].public_key());
   addresses.push_back(accounts[1].public_key());
 
-  std::cout << addresses[0] << std::endl;
-  std::cout << addresses[1] << std::endl;
   MultiSig msig{addresses};
 
   //Verify Multisig Public Address is expected Address
