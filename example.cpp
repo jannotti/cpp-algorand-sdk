@@ -368,6 +368,7 @@ void multisig() {
 
   //These mnemonics generate the msig_address below.
   //Only use this on the testnet
+  
   auto mnemonic1 = R"(base giraffe believe make tone transfer wrap attend
                       typical dirt grocery distance outside horn also abstract
                       slim ecology island alter daring equal boil absent
@@ -378,8 +379,26 @@ void multisig() {
                       stem path client plunge mutual achieve border absent 
                       aspect)";
 
+  //Txn Parameters used to generate transaction and compare against
+  //known SDK implementation
+  const auto fee = 1000;
+  const auto amount = 12345;
+  const auto fv = 2063137;
+  const auto gh = b64_decode("SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=");
 
+  //Compare C++ msig adress against golden address generated with the
+  //Python SDK using the mnemonics above
   const std::string msig_address = "MZVMI5WFABIGZKZEBEWIWEEFQCUE4HVOBUTTYFOYGXGZVZAJNFD6PVQHX4";
+
+  //Golden Signed Txn string to compare the C++ Multisig implementation against
+  //The Signed Txn string was generated using the Python SDK 
+  const auto golden = "gqRtc2lng6ZzdWJzaWeSgqJwa8QgWJVY1ZpifxAnKngvQRBcNlmGzKxZ0zrpRfUM29CwKhChc8RAlKXNe/"
+                      "LoBO/5dYck3nFxCIQEMi59iXNQw3I97aZom17puDaU1PV4YfZCKHshh3B8bpTrthULL3RJNaBHFctMCYKi"
+                      "cGvEIO8aieWQj80Zyht42hSihjo/HIhlwi3A1lS0vVXSsIDKoXPEQDheWFHzJ7PM3SUUMY0lfue1ZVyKyOS2"
+                      "kUJDnHdJ0sf/0SxyqyOnD1M6GffezoqCPSfSh3V9pXVg238PWHjxqQWjdGhyAqF2AaN0eG6Jo2FtdM0wOaNmZ"
+                      "WXNA+iiZnbOAB97IaNnZW6sdGVzdG5ldC12MS4womdoxCBIY7UYpLPITsgQ8i1PEIHLD3HwWaesIN7GL39w5Qk"
+                      "6IqJsds4AH38Jo3JjdsQgFfpW8g15Q1QuU2BB+kc3hB79ozYEOuARp4KQ9GH8ESSjc25kxCBmasR2xQBQbKskC"
+                      "SyLEIWAqE4erg0nPBXYNc2a5AlpR6R0eXBlo3BheQ";
 
   std::vector<Address> addresses; 
   std::vector<Account> accounts;
@@ -387,33 +406,35 @@ void multisig() {
   accounts.push_back(Account::from_mnemonic(mnemonic2));
   addresses.push_back(accounts[0].public_key());
   addresses.push_back(accounts[1].public_key());
+
+  std::cout << addresses[0] << std::endl;
+  std::cout << addresses[1] << std::endl;
   MultiSig msig{addresses};
 
   //Verify Multisig Public Address is expected Address
   assert(msig_address == msig.address());
-
-  AlgodClient client{};
-  auto resp = client.params();
-  assert(resp.status == 200); //Verify we communicate with node before proceeding
-  const auto& suggested = *resp.json;
-
+ 
   //Verify Multisig Txn can be signed and sent to the "to" address
   Address to{"CX5FN4QNPFBVILSTMBA7URZXQQPP3IZWAQ5OAENHQKIPIYP4CESAQ77PJA"};
+
   Transaction t = Transaction::payment(msig.address(),
                                        to, 12345, {},
-                                       suggested["min-fee"].GetUint64(),
-                                       suggested["last-round"].GetUint64()+1,
-                                       suggested["last-round"].GetUint64()+1001,
-                                       suggested["genesis-id"].GetString(),
-                                       b64_decode(suggested["genesis-hash"].GetString()),
-                                       {}, {}, {});
+                                       fee,
+                                       fv,
+                                       fv+1000,
+                                       "testnet-v1.0",
+                                       gh,
+                                       {}, {}, {}
+                                      );
 
   //Create signed Multisig Txn using a 
   //collection of secret_keys
   auto smsig = t.sign(msig.sign(accounts)); 
-  resp = client.submit(smsig);
-  assert(resp.status == 200);
- 
+
+  //Compare signed, encoded, txn string against
+  //Golden String generated with the Python SDK
+  assert(golden == b64_encode(smsig.encode()));
+
   std::cout << "multisig pass" << std::endl;
 }
 
