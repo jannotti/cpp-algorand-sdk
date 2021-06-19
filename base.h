@@ -3,7 +3,7 @@
 
 #include <string>
 #include <vector>
-
+#include <iostream>
 typedef std::vector<unsigned char> bytes;
 
 std::string b64_encode(const bytes& in, bool padded = false);

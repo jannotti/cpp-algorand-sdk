@@ -127,28 +127,45 @@ public:
 
 class Subsig {
 public:
-  Subsig(bytes public_key, bytes signature={});
+  Subsig(bytes public_key, bytes secret_key={});
 
+  void update_secret_key(bytes secret_key);
+  bytes get_secret_key(void) const;
   template <typename Stream>
   msgpack::packer<Stream>& pack(msgpack::packer<Stream>& o) const;
 
   bytes public_key;
   bytes signature;
+
+private:
+  bytes secret_key;
 };
 
 class MultiSig {
 public:
-  MultiSig(std::vector<Address> addrs={}, uint64_t threshold=0);
+  MultiSig(std::vector<Address> addrs={}, uint8_t threshold=0);
 
   template <typename Stream>
   msgpack::packer<Stream>& pack(msgpack::packer<Stream>& o) const;
 
   /* Create a new Multisig with the extra signature of Account */
-  MultiSig sign(Account) const;
+  MultiSig sign(const std::vector<Account>&) const;
 
+  //TODO: Python SDK throws an exception if 
+  //there is no public key match for signature
+  //I think it's better to return a boolean 
+  //but I'm open to suggestions
+  bool sign(const Account&);
+  bool sign(bytes secret_key);
+  bytes address(void) const;
+  
   std::vector<Subsig> sigs;
-  uint64_t threshold;
-  uint64_t version = 1;
+  uint8_t threshold;
+  uint8_t version = 1;
+
+private:
+  Address public_address;
+  void update_address(void);
 };
 
 /* We use a single transaction class to represent all transaction
@@ -243,7 +260,7 @@ public:
 
   SignedTransaction sign(Account) const;
   SignedTransaction sign(LogicSig) const;
-
+  SignedTransaction sign(MultiSig) const;
   // Field names and sections are taken from:
   //  https://developer.algorand.org/docs/reference/transactions/
   // Header

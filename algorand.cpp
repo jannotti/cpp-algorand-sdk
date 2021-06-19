@@ -160,6 +160,9 @@ operator<<(std::ostream& os, const Account& acct) {
 bool is_present(bool b) {
   return b;
 }
+bool is_present(uint8_t u) {
+  return u != 0;
+}
 bool is_present(uint64_t u) {
   return u != 0;
 }
@@ -174,6 +177,9 @@ bool is_present(Address a) {
 }
 bool is_present(LogicSig lsig) {
   return is_present(lsig.logic);
+};
+bool is_present(Subsig subsig) {
+  return is_present(subsig.public_key);
 };
 bool is_present(MultiSig msig) {
   return msig.threshold > 0;
@@ -194,8 +200,6 @@ bool is_present(std::vector<E> list) {
     if (is_present(e)) return true;
   return false;
 }
-
-
 
 template <typename Stream, typename V>
 int kv_pack(msgpack::packer<Stream>& o, const char* key, V value) {
@@ -220,9 +224,17 @@ msgpack::packer<Stream>& LogicSig::pack(msgpack::packer<Stream>& o) const {
   return o;
 }
 
-Subsig::Subsig(bytes public_key, bytes signature)
-  : public_key(public_key), signature(signature) { }
+Subsig::Subsig(bytes public_key, bytes secret_key)
+  : public_key(public_key), secret_key(secret_key), signature{} { }
 
+
+void Subsig::update_secret_key(bytes secret_key) {
+  this->secret_key = secret_key;
+}
+
+bytes Subsig::get_secret_key(void) const {
+ return this->secret_key;
+}
 template <typename Stream>
 msgpack::packer<Stream>& Subsig::pack(msgpack::packer<Stream>& o) const {
   o.pack_map(1 + is_present(signature));
@@ -231,21 +243,84 @@ msgpack::packer<Stream>& Subsig::pack(msgpack::packer<Stream>& o) const {
   return o;
 }
 
-MultiSig::MultiSig(std::vector<Address> addrs, uint64_t threshold) :
-  threshold(threshold ? threshold : addrs.size()) {
+MultiSig::MultiSig(std::vector<Address> addrs, uint8_t threshold) :
+  sigs{},     
+  threshold{threshold ? threshold : static_cast<uint8_t>(addrs.size())},
+  public_address{} {
   for (const auto& addr : addrs) {
     sigs.push_back(Subsig(addr.public_key));
   }
+  this->update_address();
 }
 
+//Note: msig address is part of the transaction and gets packed
+//as part of the transaction
 template <typename Stream>
 msgpack::packer<Stream>& MultiSig::pack(msgpack::packer<Stream>& o) const {
   o.pack_map(3);
-  o.pack("subsigs"); o.pack(sigs);
+  kv_pack(o, "subsig", sigs);
   kv_pack(o, "thr", threshold);
   kv_pack(o, "v", version);
   return o;
 }
+
+MultiSig MultiSig::sign(const std::vector<Account>& accounts) const { 
+  MultiSig msig{};
+  msig.threshold = this-> threshold; 
+  msig.version = this->version;
+  msig.sigs =  this->sigs;
+  for (const auto& account : accounts) {
+    msig.sign(account.secret_key);
+  }
+
+  return msig;
+}
+
+
+bool MultiSig::sign(const Account& account) {
+  return this->sign(account.secret_key);
+}
+
+bool MultiSig::sign(bytes secret_key) {
+  if (secret_key.size() < 64) {
+    return false;
+  }
+
+  bool success = false;
+  const bytes pk{secret_key.begin()+32, secret_key.end()};
+
+  for (auto& sig: sigs) {
+    if (pk == sig.public_key) {
+      sig.update_secret_key(secret_key);
+      success = true;
+    }
+  }
+
+  return success;
+}
+
+bytes MultiSig::address(void) const {
+  return this->public_address.public_key;
+}
+
+
+//Update MultiSig Public Address
+void MultiSig::update_address(void) {
+  const std::string msig_header = "MultisigAddr";
+  auto version_bytes = bytes{this->version};//number_to_bytes(this->version);
+  auto threshold_bytes = bytes{this->threshold};//number_to_bytes(this->threshold);
+  bytes msig_bytes{msig_header.begin(), msig_header.end()};
+ 
+  msig_bytes.insert(msig_bytes.end(), version_bytes.begin(), version_bytes.end());
+  msig_bytes.insert(msig_bytes.end(), threshold_bytes.begin(), threshold_bytes.end());
+
+  for(const auto& sig: this->sigs) {
+    msig_bytes.insert(msig_bytes.end(), sig.public_key.begin(), sig.public_key.end());
+  }
+
+  this->public_address = Address{sha512_256(msig_bytes)};
+}
+
 
 SignedTransaction::SignedTransaction(const Transaction& txn, bytes signature) :
   sig(signature), txn(txn) { }
@@ -487,6 +562,15 @@ SignedTransaction Transaction::sign(Account acct) const {
 
 SignedTransaction Transaction::sign(LogicSig logic) const {
   return SignedTransaction{*this, logic};
+}
+
+SignedTransaction Transaction::sign(MultiSig msig) const {
+  for (auto& sig : msig.sigs) {
+    if (is_present(sig.get_secret_key())) {
+      sig.signature = Account{sig.public_key, sig.get_secret_key()}.sign("TX", encode());
+    }
+  }
+  return SignedTransaction{*this, msig};
 }
 
 int Transaction::key_count() const {
