@@ -368,15 +368,15 @@ void multisig() {
 
   //These mnemonics generate the msig_address below.
   //Only use this on the testnet
-  
+
   auto mnemonic1 = R"(base giraffe believe make tone transfer wrap attend
                       typical dirt grocery distance outside horn also abstract
                       slim ecology island alter daring equal boil absent
                       carpet)";
 
-  auto mnemonic2 = R"(use animal lonely tragic style wealth uniform poverty 
+  auto mnemonic2 = R"(use animal lonely tragic style wealth uniform poverty
                       idle sail rice dutch patient sport start shine
-                      stem path client plunge mutual achieve border absent 
+                      stem path client plunge mutual achieve border absent
                       aspect)";
 
   //Txn Parameters used to generate transaction and compare against
@@ -390,7 +390,7 @@ void multisig() {
   //Python SDK using the mnemonics above
   const std::string msig_address =         "MZVMI5WFABIGZKZEBEWIWEEFQCUE4HVOBUTTYFOYGXGZVZAJNFD6PVQHX4";
   //Golden Signed Txn string to compare the C++ Multisig implementation against
-  //The Signed Txn string was generated using the Python SDK 
+  //The Signed Txn string was generated using the Python SDK
   //This is to validate checking that a msig txn that has 2 accounts and threshold set to 2
   const auto golden = "gqRtc2lng6ZzdWJzaWeSgqJwa8QgWJVY1ZpifxAnKngvQRBcNlmGzKxZ0zrpRfUM29CwKhChc8RAlKXNe/"
                       "LoBO/5dYck3nFxCIQEMi59iXNQw3I97aZom17puDaU1PV4YfZCKHshh3B8bpTrthULL3RJNaBHFctMCYKi"
@@ -400,7 +400,7 @@ void multisig() {
                       "6IqJsds4AH38Jo3JjdsQgFfpW8g15Q1QuU2BB+kc3hB79ozYEOuARp4KQ9GH8ESSjc25kxCBmasR2xQBQbKskC"
                       "SyLEIWAqE4erg0nPBXYNc2a5AlpR6R0eXBlo3BheQ";
 
-  std::vector<Address> addresses; 
+  std::vector<Address> addresses;
   std::vector<Account> accounts;
   accounts.push_back(Account::from_mnemonic(mnemonic1));
   accounts.push_back(Account::from_mnemonic(mnemonic2));
@@ -410,10 +410,10 @@ void multisig() {
 
   //Verify Multisig Public Address is expected Address
   assert(msig_address == msig.address());
- 
+
   //Verify Multisig Txn can be signed and sent to the "to" address
   Address to{"CX5FN4QNPFBVILSTMBA7URZXQQPP3IZWAQ5OAENHQKIPIYP4CESAQ77PJA"};
-   
+
   Transaction t = Transaction::payment(msig.address(),
                                         to, 12345, {},
                                         fee,
@@ -424,9 +424,8 @@ void multisig() {
                                         {}, {}, {}
                                        );
 
- //Create signed Multisig Txn using a 
- //collection of secret_keys
- auto smsig = t.sign(msig.sign(accounts)); 
+ //Create signed Multisig Txn, signed by accounts
+  auto smsig = t.sign(msig, accounts);
  //Compare signed, encoded, txn string against
  //Golden String generated with the Python SDK
  assert(golden == b64_encode(smsig.encode()));
@@ -434,7 +433,7 @@ void multisig() {
 
   /*** Test partial MSIG. 3 Address, signature threshold 2 ***/
   //Golden Signed Txn string to compare the C++ Multisig implementation against
-  //The Signed Txn string was generated using the Python SDK 
+  //The Signed Txn string was generated using the Python SDK
   //This is to validate checking that a msig txn that has 2 accounts and threshold set to 2
   const auto golden_partial = "gqRtc2lng6ZzdWJzaWeTgqJwa8QgWJVY1ZpifxAnKngvQRBcNlmGzKxZ0zrpRfUM2"
                               "9CwKhChc8RA4Y4ADq8wac/03+cDOT0seLGsbP22LOtsfTaIG31LfJIFE2M02j71GR"
@@ -454,7 +453,7 @@ void multisig() {
   MultiSig msig_partial{addresses, thr};
   //Verify Multisig Public Address is expected Address
   assert(msig_address_partial == msig_partial.address());
- 
+
   //Verify Multisig Txn can be signed and sent to the "to" address
   Transaction t_partial = Transaction::payment(msig_partial.address(),
                                                to, 12345, {},
@@ -466,11 +465,10 @@ void multisig() {
                                                {}, {}, {}
                                               );
 
-  //Create signed Multisig Txn using a 
-  //collection of secret_keys. 
-  //Note this a collection of 2 secret keys
-  //3 can be used with this account but the threshold is only 2
-  auto smsig_partial = t_partial.sign(msig_partial.sign(accounts)); 
+  //Create signed Multisig Txn using a collection of secret_keys.
+  //Note this a collection of 2 secret keys 3 can be used with this
+  //account but the threshold is only 2
+  auto smsig_partial = t_partial.sign(msig_partial, accounts);
 
   //Compare signed, encoded, txn string against
   //Golden String generated with the Python SDK
