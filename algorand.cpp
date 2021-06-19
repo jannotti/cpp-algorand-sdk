@@ -267,7 +267,8 @@ msgpack::packer<Stream>& MultiSig::pack(msgpack::packer<Stream>& o) const {
 MultiSig MultiSig::sign(const std::vector<Account>& accounts) const { 
   MultiSig msig{};
   msig.threshold = this-> threshold; 
-  msig.sigs =  this -> sigs;
+  msig.version = this->version;
+  msig.sigs =  this->sigs;
   for (const auto& account : accounts) {
     msig.sign(account.secret_key);
   }
