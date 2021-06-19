@@ -30,6 +30,7 @@ transactions, key handling, etc.
     Transaction class)
  4. Simple (single account) signatures
  5. Logicsigs, including delegated logisigs.
+ 6. Multisigs, contributed by @avislash
 
 # TODO
  1. indexer APIs
